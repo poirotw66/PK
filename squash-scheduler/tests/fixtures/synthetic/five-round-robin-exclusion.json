@@ -1,0 +1,1108 @@
+{
+  "schema_version": "1.0.0",
+  "id": "ba68c283-9460-56c4-955e-2ef5d1cdc00e",
+  "parent_id": null,
+  "status": "draft",
+  "created_at": "2026-10-26T19:29:30.981210Z",
+  "config": {
+    "configuration_status": "incomplete",
+    "courts": [
+      {
+        "availability": [
+          {
+            "end_at": "2030-01-01T20:00:00+08:00",
+            "start_at": "2030-01-01T08:00:00+08:00"
+          }
+        ],
+        "blackouts": [
+          {
+            "end_at": "2030-01-01T13:00:00+08:00",
+            "start_at": "2030-01-01T12:00:00+08:00"
+          }
+        ],
+        "id": "10078724-95f1-5f06-858a-210c3e1bbace",
+        "label": "合成球場 1",
+        "sort_order": 1
+      },
+      {
+        "availability": [
+          {
+            "end_at": "2030-01-01T20:00:00+08:00",
+            "start_at": "2030-01-01T08:00:00+08:00"
+          }
+        ],
+        "blackouts": [
+          {
+            "end_at": "2030-01-01T13:00:00+08:00",
+            "start_at": "2030-01-01T12:00:00+08:00"
+          }
+        ],
+        "id": "c5d446df-b9ae-5f7b-ac0d-13f760c3c012",
+        "label": "合成球場 2",
+        "sort_order": 2
+      }
+    ],
+    "courts_status": "configured",
+    "divisions": [
+      {
+        "id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+        "name": "男子 F 組",
+        "category": "competitive",
+        "gender_category": "male",
+        "level_order": 6,
+        "minimum_entries": 3,
+        "status": "active",
+        "format_plan": {
+          "template_id": "round_robin",
+          "template_version": "1.0.0",
+          "pool_sizes": [],
+          "advancement_counts": [],
+          "bracket_capacity": null,
+          "placement_matches": [],
+          "status": "draft",
+          "approval_id": null
+        },
+        "rule_overrides": {},
+        "draw_overrides": {}
+      }
+    ],
+    "divisions_status": "configured",
+    "document_kind": "event_config_template",
+    "draw_defaults": {
+      "affiliation_avoidance_mode": "disabled",
+      "affiliation_avoidance_scope": null,
+      "bye_allocation_rule": null,
+      "seeded_entries": [],
+      "seeded_entries_mode": "none",
+      "special_slot_rules": null
+    },
+    "event": {
+      "actor_id": "synthetic-operator",
+      "event_dates": [
+        "2030-01-01"
+      ],
+      "id": "4ae88687-0a69-5d48-b877-a6a0a783b38f",
+      "name": "匿名五人循環例外（合成資料）",
+      "timezone": "Asia/Taipei",
+      "venue_name": "合成測試場館"
+    },
+    "historical_review": {
+      "original_attachments_revalidated": false,
+      "scope": "2026_historical_reconstruction_only",
+      "unresolved_items": [
+        {
+          "code": "HISTORICAL_UNASSIGNED_REASON",
+          "reason": null,
+          "status": "pending"
+        },
+        {
+          "code": "HISTORICAL_MF_SPECIAL_DRAW",
+          "rule": null,
+          "status": "pending"
+        },
+        {
+          "code": "HISTORICAL_MF_SIXTH_KNOCKOUT_MATCH",
+          "match_purpose": null,
+          "status": "pending"
+        }
+      ]
+    },
+    "match_rule_defaults": {
+      "best_of_games": null,
+      "double_forfeit_rule": null,
+      "late_arrival_rule": null,
+      "multiway_tie_rule": null,
+      "point_cap": null,
+      "point_cap_mode": "unconfigured",
+      "points_to_win_game": null,
+      "ranking_denominator_rule": null,
+      "replacement_rule": null,
+      "retirement_rule": null,
+      "walkover_rule": null,
+      "win_by_points": null
+    },
+    "merge_whitelist": [],
+    "merge_whitelist_status": "configured",
+    "policy": {
+      "automation_mode": "generate_review_approve",
+      "division_counts": {
+        "default_minimum_entries": 3,
+        "per_division_override_allowed": true,
+        "single_entry_action": "resolution_required",
+        "two_entries_action": "warning_and_recorded_resolution"
+      },
+      "draw": {
+        "record_seed_and_output": true,
+        "redraw_requires_reason": true,
+        "reproducible": true,
+        "support_affiliation_avoidance": true,
+        "support_byes": true,
+        "support_seeded_entries": true
+      },
+      "exhibitions": {
+        "include_in_official_rankings": false,
+        "include_in_resource_constraints": true
+      },
+      "format_selection": "recommend_then_approve_per_division",
+      "historical_authority": "2026-10-23_published_pdf",
+      "identity": {
+        "automatic_same_name_merge": false,
+        "primary_key": "participant_id",
+        "separate_official_and_display_names": true,
+        "support_aliases": true
+      },
+      "merging": {
+        "approval_required": true,
+        "automatic_application": false,
+        "cross_category_mode": "special_request_only",
+        "cross_gender_mode": "special_request_only",
+        "cross_school_stage_mode": "special_request_only",
+        "preserve_original_registration": true,
+        "recommendation_scope": "same_gender_adjacent_competitive_levels_in_directed_whitelist"
+      },
+      "outputs": {
+        "dynamic_page_count": true,
+        "formats": [
+          "xlsx",
+          "pdf"
+        ],
+        "retain_brackets_schedule_qr_style": true,
+        "same_approved_revision_required": true
+      },
+      "ranking": {
+        "tie_break_order": [
+          "head_to_head",
+          "game_difference",
+          "point_difference",
+          "manual_review"
+        ],
+        "unconfigured_multiway_tie_mode": "manual_review"
+      },
+      "rescheduling": {
+        "preserve_approved_revisions": true,
+        "reapproval_required": true,
+        "support_local_replanning": true,
+        "support_locks": true
+      },
+      "round_robin": {
+        "default_mode": "complete",
+        "exclusions_require_reason_and_approval": true,
+        "incomplete_ranking_mode": "manual_approval"
+      },
+      "rules": {
+        "division_overrides": true,
+        "stage_overrides": true
+      },
+      "scoring_defaults": {
+        "forfeit_points": 0,
+        "loss_points": 1,
+        "override_scopes": [
+          "division",
+          "stage"
+        ],
+        "win_points": 2
+      },
+      "source_of_truth": "approved_revision",
+      "unassigned_registration": "explicit_resolution_required"
+    },
+    "policy_version": "phase1-2026-10-27",
+    "publication": {
+      "font_asset_id": null,
+      "historical_layout_verified": false,
+      "layout_template_id": null,
+      "orientation": null,
+      "paper_size": null,
+      "qr_label": null,
+      "qr_mode": "disabled",
+      "qr_url": null,
+      "sponsor_mode": "none",
+      "sponsors": []
+    },
+    "registration": {
+      "division_aliases": {
+        "男子 F 組": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+        "男子F組": "ce846a85-603f-566b-a4d9-56ece61aaf16"
+      },
+      "identity_resolutions": [],
+      "source_files": []
+    },
+    "rule_sets": {},
+    "runtime": {
+      "candidate_conflict_strategy": "conservative",
+      "conversion_timeout_seconds": 60,
+      "import_max_expanded_mib": 250,
+      "import_max_file_mib": 25,
+      "solver_time_limit_seconds": 60
+    },
+    "schema_version": "1.0.0",
+    "spec_id": "SQUASH-SPEC-001",
+    "timing_defaults": {
+      "court_buffer_minutes": 5,
+      "court_transfer_minutes": 0,
+      "daily_grid_anchors": [
+        {
+          "date": "2030-01-01",
+          "local_time": "08:00:00"
+        }
+      ],
+      "estimated_play_minutes": 25,
+      "minimum_player_rest_minutes": 20,
+      "ranking_confirmation_minutes": 10,
+      "start_grid_minutes": 15
+    }
+  },
+  "participants": [
+    {
+      "id": "b6c894b9-b0b5-5b28-ab16-dd7fae1597e9",
+      "official_name": "匿名選手01",
+      "display_name": "匿名選手01",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "affiliation_ids": [],
+      "minimum_rest_minutes": null
+    },
+    {
+      "id": "ee347bc7-8b19-52dd-8a73-3bda21764e52",
+      "official_name": "匿名選手02",
+      "display_name": "匿名選手02",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "affiliation_ids": [],
+      "minimum_rest_minutes": null
+    },
+    {
+      "id": "79c4e4d3-94ad-5728-8c70-430a0db2a044",
+      "official_name": "匿名選手03",
+      "display_name": "匿名選手03",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "affiliation_ids": [],
+      "minimum_rest_minutes": null
+    },
+    {
+      "id": "fcf88a05-064d-587e-8dd9-ddf8d8afdf5a",
+      "official_name": "匿名選手04",
+      "display_name": "匿名選手04",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "affiliation_ids": [],
+      "minimum_rest_minutes": null
+    },
+    {
+      "id": "5ad72225-5bdd-5d48-b419-c8fbb84865dc",
+      "official_name": "匿名選手05",
+      "display_name": "匿名選手05",
+      "aliases": [],
+      "identity_status": "confirmed",
+      "affiliation_ids": [],
+      "minimum_rest_minutes": null
+    }
+  ],
+  "registrations": [
+    {
+      "id": "a156ee0f-59cc-5eec-92f5-8b5891307662",
+      "participant_id": "b6c894b9-b0b5-5b28-ab16-dd7fae1597e9",
+      "original_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "source_ref": {
+        "source_file_id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+        "paragraph_index": 0,
+        "raw_text": "匿名選手01",
+        "page_number": null
+      },
+      "status": "accepted"
+    },
+    {
+      "id": "0c6f6cc9-28bf-5787-9ca8-15872122f1e9",
+      "participant_id": "ee347bc7-8b19-52dd-8a73-3bda21764e52",
+      "original_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "source_ref": {
+        "source_file_id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+        "paragraph_index": 1,
+        "raw_text": "匿名選手02",
+        "page_number": null
+      },
+      "status": "accepted"
+    },
+    {
+      "id": "e4d308df-635f-53bc-b58b-6a402be8f021",
+      "participant_id": "79c4e4d3-94ad-5728-8c70-430a0db2a044",
+      "original_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "source_ref": {
+        "source_file_id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+        "paragraph_index": 2,
+        "raw_text": "匿名選手03",
+        "page_number": null
+      },
+      "status": "accepted"
+    },
+    {
+      "id": "1ebd4ae4-3ee5-5d69-813a-6450aa9499ee",
+      "participant_id": "fcf88a05-064d-587e-8dd9-ddf8d8afdf5a",
+      "original_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "source_ref": {
+        "source_file_id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+        "paragraph_index": 3,
+        "raw_text": "匿名選手04",
+        "page_number": null
+      },
+      "status": "accepted"
+    },
+    {
+      "id": "f7a85876-9cdb-5656-970c-dbd7f3c81824",
+      "participant_id": "5ad72225-5bdd-5d48-b419-c8fbb84865dc",
+      "original_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "source_ref": {
+        "source_file_id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+        "paragraph_index": 4,
+        "raw_text": "匿名選手05",
+        "page_number": null
+      },
+      "status": "accepted"
+    }
+  ],
+  "entries": [
+    {
+      "id": "ec394f2d-5d11-51c3-91d3-0cebebd01341",
+      "registration_id": "a156ee0f-59cc-5eec-92f5-8b5891307662",
+      "effective_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "status": "active"
+    },
+    {
+      "id": "897f59b0-8965-5ec6-b424-f7e76a0d96f1",
+      "registration_id": "0c6f6cc9-28bf-5787-9ca8-15872122f1e9",
+      "effective_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "status": "active"
+    },
+    {
+      "id": "f979114d-16a7-52db-8081-aa53594c12c8",
+      "registration_id": "e4d308df-635f-53bc-b58b-6a402be8f021",
+      "effective_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "status": "active"
+    },
+    {
+      "id": "e8b22114-8d56-544b-a0ce-e28679091504",
+      "registration_id": "1ebd4ae4-3ee5-5d69-813a-6450aa9499ee",
+      "effective_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "status": "active"
+    },
+    {
+      "id": "b43a1198-9367-5484-8aeb-ed65efc1204d",
+      "registration_id": "f7a85876-9cdb-5656-970c-dbd7f3c81824",
+      "effective_division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "status": "active"
+    }
+  ],
+  "divisions": [
+    {
+      "id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "name": "男子 F 組",
+      "category": "competitive",
+      "gender_category": "male",
+      "level_order": 6,
+      "minimum_entries": 3,
+      "status": "active",
+      "format_plan": {
+        "template_id": "round_robin",
+        "template_version": "1.0.0",
+        "pool_sizes": [],
+        "advancement_counts": [],
+        "bracket_capacity": null,
+        "placement_matches": [],
+        "status": "approved",
+        "approval_id": "a1b82444-c213-4bac-a38c-16d8eb9c2013"
+      },
+      "rule_overrides": {},
+      "draw_overrides": {}
+    }
+  ],
+  "stages": [
+    {
+      "id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "type": "round_robin",
+      "order": 0,
+      "rule_set_id": null
+    }
+  ],
+  "pools": [],
+  "matches": [
+    {
+      "id": "074efa9d-a201-5fbc-8b58-ad04f34077bb",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "897f59b0-8965-5ec6-b424-f7e76a0d96f1"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "b43a1198-9367-5484-8aeb-ed65efc1204d"
+      },
+      "status": "excluded",
+      "round": 1,
+      "bracket_position": 0,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "3593c9d6-8a81-5650-a955-9c3b6acf292c",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "897f59b0-8965-5ec6-b424-f7e76a0d96f1"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "e8b22114-8d56-544b-a0ce-e28679091504"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 1,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "9a393b9d-9301-59be-8930-405e18774696",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "897f59b0-8965-5ec6-b424-f7e76a0d96f1"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "ec394f2d-5d11-51c3-91d3-0cebebd01341"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 2,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "6718a291-c650-5253-aa30-0cd6cbd75b38",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "897f59b0-8965-5ec6-b424-f7e76a0d96f1"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "f979114d-16a7-52db-8081-aa53594c12c8"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 3,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "331a9b8d-0af3-5cc4-986a-0842d79f2c7c",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "b43a1198-9367-5484-8aeb-ed65efc1204d"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "e8b22114-8d56-544b-a0ce-e28679091504"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 4,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "0809cf93-45ba-57e0-bf1f-c479f3540c54",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "b43a1198-9367-5484-8aeb-ed65efc1204d"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "ec394f2d-5d11-51c3-91d3-0cebebd01341"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 5,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "c6c9b0ff-5ed5-5252-90f8-31a945dc15de",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "b43a1198-9367-5484-8aeb-ed65efc1204d"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "f979114d-16a7-52db-8081-aa53594c12c8"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 6,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "1bb1512b-09ec-5523-ad7d-be9b79a305f4",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "e8b22114-8d56-544b-a0ce-e28679091504"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "ec394f2d-5d11-51c3-91d3-0cebebd01341"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 7,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "90c36ea7-9bb9-5f90-a694-7a38471497fd",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "e8b22114-8d56-544b-a0ce-e28679091504"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "f979114d-16a7-52db-8081-aa53594c12c8"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 8,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    },
+    {
+      "id": "8e588922-f9ce-56e5-8f16-9aae38446e64",
+      "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+      "kind": "competitive",
+      "side_a": {
+        "type": "entry",
+        "entry_id": "ec394f2d-5d11-51c3-91d3-0cebebd01341"
+      },
+      "side_b": {
+        "type": "entry",
+        "entry_id": "f979114d-16a7-52db-8081-aa53594c12c8"
+      },
+      "status": "planned",
+      "round": 1,
+      "bracket_position": 9,
+      "display_code": null,
+      "rule_snapshot": {
+        "match_rules": {
+          "best_of_games": null,
+          "double_forfeit_rule": null,
+          "late_arrival_rule": null,
+          "multiway_tie_rule": null,
+          "point_cap": null,
+          "point_cap_mode": "unconfigured",
+          "points_to_win_game": null,
+          "ranking_denominator_rule": null,
+          "replacement_rule": null,
+          "retirement_rule": null,
+          "walkover_rule": null,
+          "win_by_points": null,
+          "scoring": {
+            "win_points": 2,
+            "loss_points": 1,
+            "forfeit_points": 0,
+            "override_scopes": [
+              "division",
+              "stage"
+            ]
+          }
+        },
+        "timing": {
+          "court_buffer_minutes": 5,
+          "court_transfer_minutes": 0,
+          "daily_grid_anchors": [
+            {
+              "date": "2030-01-01",
+              "local_time": "08:00:00"
+            }
+          ],
+          "estimated_play_minutes": 25,
+          "minimum_player_rest_minutes": 20,
+          "ranking_confirmation_minutes": 10,
+          "start_grid_minutes": 15
+        },
+        "inheritance": {
+          "division_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+          "stage_id": "3421c0e6-7a02-54ea-b87b-1b83de15fa02",
+          "rule_set_id": null
+        },
+        "basis_hash": "66c05807f904ffc2622e0537b0cbf852cba5e4073527166c3d077ca9d450905f"
+      }
+    }
+  ],
+  "assignments": [],
+  "draws": [],
+  "exclusions": [
+    {
+      "id": "1435f0e6-d6a3-4d85-a630-1e15e920abdf",
+      "match_id": "074efa9d-a201-5fbc-8b58-ad04f34077bb",
+      "reason": "Synthetic approved omission; manual ranking required",
+      "status": "approved",
+      "approval_id": "e5e4521c-4820-45bf-8995-cd3e2c4078a1"
+    }
+  ],
+  "results": [],
+  "issues": [],
+  "approvals": [
+    {
+      "id": "a1b82444-c213-4bac-a38c-16d8eb9c2013",
+      "actor_id": "synthetic-reviewer",
+      "action": "approve",
+      "target_type": "format",
+      "target_id": "ce846a85-603f-566b-a4d9-56ece61aaf16",
+      "reason": "Synthetic fixture format only",
+      "created_at": "2026-10-26T23:42:36.031055+00:00",
+      "basis_hash": "c46b089c1b374a35cfa4822438711b348cc402375939ae7d5e698b9e89183343"
+    },
+    {
+      "id": "e5e4521c-4820-45bf-8995-cd3e2c4078a1",
+      "actor_id": "synthetic-reviewer",
+      "action": "approve",
+      "target_type": "exclusion",
+      "target_id": "1435f0e6-d6a3-4d85-a630-1e15e920abdf",
+      "reason": "Synthetic fixture exclusion only",
+      "created_at": "2026-10-26T23:42:36.033619+00:00",
+      "basis_hash": "ec3d9bf3a9641c9ebe6942f8a35212a2a07d556a58a05988bb2d11861c05877f"
+    }
+  ],
+  "changes": [],
+  "imports": [],
+  "sources": [
+    {
+      "id": "5094be23-24c0-5822-9e40-a0030cd00a5b",
+      "original_name": "five.synthetic.txt",
+      "media_type": "text/plain",
+      "sha256": "84853d8c19973905bfbc450c0aed86cebb3409a2ecdaf6e7958d50d0acc19c41",
+      "imported_at": "2026-10-26T19:29:30.981210+00:00",
+      "fixture_only": true
+    }
+  ],
+  "ranking_decisions": []
+}

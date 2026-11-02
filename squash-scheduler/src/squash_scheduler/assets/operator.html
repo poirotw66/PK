@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>壁球賽務 · 操作台</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 3h18v18H3zM3 9h18M12 9v12' fill='none' stroke='%231b6c80'/%3E%3C/svg%3E"><link rel="stylesheet" href="/operator.css"><script src="/draft-storage.js" defer></script><script src="/schedule-ui.js" defer></script><script src="/workload-ui.js" defer></script><script src="/operator.js" defer></script></head>
+<body><aside class="sidebar"><a class="brand" href="#overview"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M3 3h26v30H3zM3 13h26M16 13v20M3 23h26"/></svg><span>壁球賽務<small>本地賽事工作區</small></span></a>
+<nav aria-label="賽務操作"><a href="#overview">賽務總覽</a><a href="#board">四場地看板</a><a href="#workload">選手負荷</a><a href="#schedule">賽程調整</a><a href="#results">成績登錄</a><a href="#seeds">種子設定</a><a href="#encouragement">鼓勵賽</a><a href="#entries">候補與異動</a><a href="#history">操作紀錄</a><a href="#backup">備份與還原</a></nav><p class="sidebar-note">每次儲存皆保留版本與異動紀錄。</p></aside>
+<div class="app"><header class="topbar"><div class="workspace-heading"><span id="event-name">載入賽事…</span><span id="workspace-name" class="muted"></span></div><div class="actions"><a href="/live/" target="_blank" rel="noopener">即時閱讀頁</a><button id="refresh" type="button">重新整理</button></div></header><main class="sheet">
+<div class="title-row"><div><h1 id="title">賽務總覽</h1><p class="muted" id="subtitle">讀取本地賽事資料中。</p></div><label class="actor-label">操作者<input id="actor" autocomplete="name" required></label></div>
+<div id="message" class="message" role="status" aria-live="polite" hidden></div>
+<div class="scope"><label>組別<select id="division"></select></label><label class="search-label">搜尋選手或場號<input id="search" type="search" placeholder="姓名、場號"></label></div>
+<div id="content" aria-live="polite"><p class="empty">載入賽事中…</p></div>
+<section class="reason-section"><label for="reason">本次異動原因</label><textarea id="reason" rows="2" placeholder="例如：核對裁判紀錄後登錄比分"></textarea></section>
+<section class="exports"><div><h2>排程與文件</h2><p class="muted">文件以產生當時的賽事版本為準。</p></div><div class="actions"><button id="schedule" type="button">預覽重新排程</button><button id="export" type="button">產生 PDF、Excel 與閱讀頁</button></div><div id="jobs"></div></section>
+</main></div>
+<dialog id="review" aria-labelledby="review-title"><div class="dialog-heading"><h2 id="review-title">確認異動</h2><button id="cancel-review" type="button">取消</button></div><div id="review-body"></div><p class="muted" id="review-reason"></p><div class="dialog-actions"><button id="confirm" class="primary" type="button">確認並儲存</button></div></dialog>
+<script id="boot" type="application/json">__BOOT__</script></body></html>

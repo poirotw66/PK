@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "squash-scheduler"
+version = "0.1.0"
+description = "Local review-first squash tournament scheduling"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "pydantic>=2.12,<3", "python-docx>=1.2,<2", "openpyxl>=3.1,<4",
+  "ortools>=9.14,<10", "jinja2>=3.1,<4", "playwright>=1.55,<2", "tzdata>=2025.2",
+  "pymupdf>=1.26,<2", "qrcode[pil]>=8.2,<9", "zxing-cpp>=2.3,<3",
+  "fonttools>=4.60,<5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4,<10", "ruff>=0.14,<1", "mypy>=1.18,<2"]
+
+[project.scripts]
+squash = "squash_scheduler.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = ["integration: real installed browser PDF verification"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+check_untyped_defs = true

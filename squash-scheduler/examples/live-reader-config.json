@@ -1,0 +1,7 @@
+{
+  "source": {
+    "type": "http-json",
+    "version_url": "/public/version.json"
+  },
+  "poll_interval_ms": 3000
+}

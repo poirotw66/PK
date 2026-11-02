@@ -1,0 +1,635 @@
+{
+  "$defs": {
+    "PublicCourt": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "PublicCourt",
+      "type": "object"
+    },
+    "PublicDivision": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "entry_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry Count"
+        },
+        "single_entry_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Single Entry Name"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "PublicDivision",
+      "type": "object"
+    },
+    "PublicGame": {
+      "additionalProperties": false,
+      "properties": {
+        "side_a": {
+          "minimum": 0,
+          "title": "Side A",
+          "type": "integer"
+        },
+        "side_b": {
+          "minimum": 0,
+          "title": "Side B",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "side_a",
+        "side_b"
+      ],
+      "title": "PublicGame",
+      "type": "object"
+    },
+    "PublicMatch": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "division_id": {
+          "title": "Division Id",
+          "type": "string"
+        },
+        "stage_id": {
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "round": {
+          "title": "Round",
+          "type": "integer"
+        },
+        "position": {
+          "title": "Position",
+          "type": "integer"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "side_a": {
+          "$ref": "#/$defs/PublicSide"
+        },
+        "side_b": {
+          "$ref": "#/$defs/PublicSide"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PublicResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "court_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Court Id"
+        },
+        "planned_start_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Planned Start At"
+        },
+        "called_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Called At"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Started At"
+        },
+        "delay_minutes": {
+          "title": "Delay Minutes",
+          "type": "integer"
+        },
+        "delay_active": {
+          "title": "Delay Active",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "code",
+        "division_id",
+        "stage_id",
+        "round",
+        "position",
+        "kind",
+        "status",
+        "side_a",
+        "side_b",
+        "result",
+        "court_id",
+        "planned_start_at",
+        "called_at",
+        "started_at",
+        "delay_minutes",
+        "delay_active"
+      ],
+      "title": "PublicMatch",
+      "type": "object"
+    },
+    "PublicResult": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "enum": [
+            "played",
+            "walkover",
+            "retired",
+            "double_forfeit",
+            "cancelled"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "winner_entry_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Winner Entry Id"
+        },
+        "games": {
+          "items": {
+            "$ref": "#/$defs/PublicGame"
+          },
+          "title": "Games",
+          "type": "array"
+        }
+      },
+      "required": [
+        "outcome",
+        "winner_entry_id",
+        "games"
+      ],
+      "title": "PublicResult",
+      "type": "object"
+    },
+    "PublicSide": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "entry_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entry Id"
+        },
+        "source_type": {
+          "title": "Source Type",
+          "type": "string"
+        },
+        "source_match_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Match Id"
+        },
+        "source_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Label"
+        },
+        "resolution": {
+          "enum": [
+            "confirmed",
+            "pending",
+            "bye"
+          ],
+          "title": "Resolution",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source_type",
+        "resolution"
+      ],
+      "title": "PublicSide",
+      "type": "object"
+    },
+    "PublicStage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "division_id": {
+          "title": "Division Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "bye_names": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Bye Names",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "division_id",
+        "name",
+        "type",
+        "order"
+      ],
+      "title": "PublicStage",
+      "type": "object"
+    },
+    "PublicStanding": {
+      "additionalProperties": false,
+      "properties": {
+        "entry_id": {
+          "title": "Entry Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Rank"
+        },
+        "wins": {
+          "title": "Wins",
+          "type": "integer"
+        },
+        "losses": {
+          "title": "Losses",
+          "type": "integer"
+        },
+        "forfeits": {
+          "title": "Forfeits",
+          "type": "integer"
+        },
+        "played_count": {
+          "title": "Played Count",
+          "type": "integer"
+        },
+        "adjudicated_count": {
+          "title": "Adjudicated Count",
+          "type": "integer"
+        },
+        "points": {
+          "title": "Points",
+          "type": "number"
+        },
+        "games_for": {
+          "title": "Games For",
+          "type": "integer"
+        },
+        "games_against": {
+          "title": "Games Against",
+          "type": "integer"
+        },
+        "qualifies": {
+          "title": "Qualifies",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "entry_id",
+        "name",
+        "status",
+        "rank",
+        "wins",
+        "losses",
+        "forfeits",
+        "played_count",
+        "adjudicated_count",
+        "points",
+        "games_for",
+        "games_against",
+        "qualifies"
+      ],
+      "title": "PublicStanding",
+      "type": "object"
+    },
+    "PublicStandingsGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "stage_id": {
+          "title": "Stage Id",
+          "type": "string"
+        },
+        "division_id": {
+          "title": "Division Id",
+          "type": "string"
+        },
+        "pool_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Pool Id"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "provisional",
+            "manual_review",
+            "final"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "notice": {
+          "title": "Notice",
+          "type": "string"
+        },
+        "scoring_label": {
+          "title": "Scoring Label",
+          "type": "string"
+        },
+        "advancement_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Advancement Count"
+        },
+        "confirmed_matches": {
+          "title": "Confirmed Matches",
+          "type": "integer"
+        },
+        "total_matches": {
+          "title": "Total Matches",
+          "type": "integer"
+        },
+        "tie_groups": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Tie Groups",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/PublicStanding"
+          },
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "stage_id",
+        "division_id",
+        "pool_id",
+        "name",
+        "status",
+        "notice",
+        "scoring_label",
+        "advancement_count",
+        "confirmed_matches",
+        "total_matches",
+        "tie_groups",
+        "rows"
+      ],
+      "title": "PublicStandingsGroup",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    },
+    "workspace_id": {
+      "title": "Workspace Id",
+      "type": "string"
+    },
+    "revision_id": {
+      "title": "Revision Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "timezone": {
+      "title": "Timezone",
+      "type": "string"
+    },
+    "publication_status": {
+      "enum": [
+        "ready",
+        "pending_review"
+      ],
+      "title": "Publication Status",
+      "type": "string"
+    },
+    "notice": {
+      "title": "Notice",
+      "type": "string"
+    },
+    "divisions": {
+      "items": {
+        "$ref": "#/$defs/PublicDivision"
+      },
+      "title": "Divisions",
+      "type": "array"
+    },
+    "stages": {
+      "items": {
+        "$ref": "#/$defs/PublicStage"
+      },
+      "title": "Stages",
+      "type": "array"
+    },
+    "courts": {
+      "items": {
+        "$ref": "#/$defs/PublicCourt"
+      },
+      "title": "Courts",
+      "type": "array"
+    },
+    "matches": {
+      "items": {
+        "$ref": "#/$defs/PublicMatch"
+      },
+      "title": "Matches",
+      "type": "array"
+    },
+    "standings": {
+      "items": {
+        "$ref": "#/$defs/PublicStandingsGroup"
+      },
+      "title": "Standings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "version",
+    "workspace_id",
+    "revision_id",
+    "updated_at",
+    "name",
+    "timezone",
+    "publication_status",
+    "notice",
+    "divisions",
+    "stages",
+    "courts",
+    "matches"
+  ],
+  "title": "PublicSnapshot",
+  "type": "object"
+}

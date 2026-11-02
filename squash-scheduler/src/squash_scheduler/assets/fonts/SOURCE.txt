@@ -1,0 +1,8 @@
+IBM Plex Sans Regular
+Official upstream: https://github.com/IBM/plex
+Font source: https://raw.githubusercontent.com/IBM/plex/master/packages/plex-sans/fonts/complete/woff2/IBMPlexSans-Regular.woff2
+License source: https://raw.githubusercontent.com/IBM/plex/master/LICENSE.txt
+License: SIL Open Font License 1.1 (see OFL.txt)
+Retrieved: 2026-10-28
+Local filename: IBMPlexSans.woff2
+SHA256: BA711A3085FF9F27440B6B9C4550CFC47C97BF36591D5DA958B975BB3ADD8C1A

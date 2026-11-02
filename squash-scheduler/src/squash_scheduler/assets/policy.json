@@ -1,0 +1,82 @@
+{
+    "source_of_truth":  "approved_revision",
+    "historical_authority":  "2026-10-23_published_pdf",
+    "automation_mode":  "generate_review_approve",
+    "round_robin":  {
+                        "default_mode":  "complete",
+                        "exclusions_require_reason_and_approval":  true,
+                        "incomplete_ranking_mode":  "manual_approval"
+                    },
+    "division_counts":  {
+                            "single_entry_action":  "resolution_required",
+                            "two_entries_action":  "warning_and_recorded_resolution",
+                            "default_minimum_entries":  3,
+                            "per_division_override_allowed":  true
+                        },
+    "merging":  {
+                    "automatic_application":  false,
+                    "recommendation_scope":  "same_gender_adjacent_competitive_levels_in_directed_whitelist",
+                    "cross_gender_mode":  "special_request_only",
+                    "cross_school_stage_mode":  "special_request_only",
+                    "cross_category_mode":  "special_request_only",
+                    "approval_required":  true,
+                    "preserve_original_registration":  true
+                },
+    "unassigned_registration":  "explicit_resolution_required",
+    "scoring_defaults":  {
+                             "win_points":  2,
+                             "loss_points":  1,
+                             "forfeit_points":  0,
+                             "override_scopes":  [
+                                                     "division",
+                                                     "stage"
+                                                 ]
+                         },
+    "ranking":  {
+                    "tie_break_order":  [
+                                            "head_to_head",
+                                            "game_difference",
+                                            "point_difference",
+                                            "manual_review"
+                                        ],
+                    "unconfigured_multiway_tie_mode":  "manual_review"
+                },
+    "draw":  {
+                 "reproducible":  true,
+                 "record_seed_and_output":  true,
+                 "redraw_requires_reason":  true,
+                 "support_seeded_entries":  true,
+                 "support_byes":  true,
+                 "support_affiliation_avoidance":  true
+             },
+    "format_selection":  "recommend_then_approve_per_division",
+    "rescheduling":  {
+                         "support_locks":  true,
+                         "support_local_replanning":  true,
+                         "preserve_approved_revisions":  true,
+                         "reapproval_required":  true
+                     },
+    "identity":  {
+                     "primary_key":  "participant_id",
+                     "separate_official_and_display_names":  true,
+                     "support_aliases":  true,
+                     "automatic_same_name_merge":  false
+                 },
+    "outputs":  {
+                    "formats":  [
+                                    "xlsx",
+                                    "pdf"
+                                ],
+                    "same_approved_revision_required":  true,
+                    "retain_brackets_schedule_qr_style":  true,
+                    "dynamic_page_count":  true
+                },
+    "exhibitions":  {
+                        "include_in_resource_constraints":  true,
+                        "include_in_official_rankings":  false
+                    },
+    "rules":  {
+                  "division_overrides":  true,
+                  "stage_overrides":  true
+              }
+}

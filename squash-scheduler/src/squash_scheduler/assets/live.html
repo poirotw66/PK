@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>壁球賽事 · 即時賽況</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 3h18v18H3zM3 9h18M12 9v12' fill='none' stroke='%231b6c80'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/live.css"><script type="module" src="/live.mjs"></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/live/" aria-label="壁球賽事，即時賽況"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M3 3h26v30H3zM3 13h26M16 13v20M3 23h26"/></svg><span>壁球賽事<small>即時賽況</small></span></a><div class="connection"><span id="connection" role="status">正在連線…</span><button id="refresh" type="button">立即更新</button></div></header>
+  <div class="reader-layout">
+  <aside class="reader-sidebar" aria-label="閱讀導覽">
+    <details id="reader-navigation" class="reader-navigation" open>
+      <summary><span>頁內導覽</span><span id="nav-current">選擇閱讀章節</span></summary>
+      <p id="nav-context" class="muted">取得章節中…</p>
+      <nav id="section-nav" aria-label="賽況章節"><p class="muted">載入賽況後顯示導覽。</p></nav>
+      <a class="reader-back-top" href="#reader-top">回到頁首</a>
+    </details>
+  </aside>
+  <main class="sheet" id="reader-top" tabindex="-1">
+    <div class="title-row"><div><h1 id="event-name">即時賽況</h1><p id="workspace" class="muted">讀取已確認的對戰與成績</p></div><p id="summary" class="summary"></p></div>
+    <p id="notice" class="muted">成績確認後更新比分與晉級，未決對手保留待確認。</p>
+    <p id="error" class="notice" role="status" hidden></p>
+    <div class="filters"><label>組別<select id="division"><option value="">全部組別</option></select></label><label class="search">搜尋選手或場號<input id="search" type="search" placeholder="姓名、場號" autocomplete="off"></label><details class="more-filters"><summary>日期與場地</summary><div><label>日期<select id="date"><option value="">全部日期</option></select></label><label>場地<select id="court"><option value="">全部場地</option></select></label></div></details></div>
+    <nav class="tabs" aria-label="賽況檢視"><button type="button" data-view="bracket" aria-pressed="true">晉級圖表</button><button type="button" data-view="standings" aria-pressed="false">積分與排名</button><button type="button" data-view="schedule" aria-pressed="false">賽程與成績</button></nav>
+    <div id="content"><section class="panel"><h2>對戰與晉級</h2><p class="empty">正在取得賽況…</p></section></div>
+    <footer><span id="updated">尚未取得資料</span><span id="revision"></span><p>此頁自動更新已確認的賽況；PDF 與離線閱讀頁保留各次匯出的內容。</p></footer>
+  </main>
+  </div>
+</body>
+</html>

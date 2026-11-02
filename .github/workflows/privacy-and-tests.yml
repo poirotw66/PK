@@ -1,0 +1,38 @@
+name: Privacy and portable tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source and reachable history
+        run: |
+          python scripts/check_privacy.py --history
+          python scripts/test_privacy.py
+      - name: Install locked dependencies
+        working-directory: squash-scheduler
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev
+      - name: Run portable scheduler tests
+        working-directory: squash-scheduler
+        run: uv run python -m pytest -q tests/test_division_batches.py tests/test_compact_schedule.py tests/test_scheduling.py tests/test_solver_hints.py tests/test_player_workload.py tests/test_manual_schedule.py
+      - name: Generate synthetic inputs only
+        working-directory: squash-scheduler
+        run: uv run python examples/run_demo.py --output output/anonymous-demo --no-pdf
+      - name: Build and test the reader using synthetic data
+        working-directory: sites/squash-reader
+        run: |
+          ../../squash-scheduler/.venv/bin/python build.py --scheduler ../../squash-scheduler --workspace ../../squash-scheduler/output/anonymous-demo/tournament
+          ../../squash-scheduler/.venv/bin/python scripts/build-worker.py
+          node --test tests/reader-order.test.mjs tests/sync-worker.test.mjs
