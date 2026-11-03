@@ -125,6 +125,7 @@ window.addEventListener('popstate', () => {
 });
 
 function syncBrowseControls() {
+  renderLiveNow();
   syncMobileControls();
   document.body.dataset.view = view;
   syncPersonalSchedule();
@@ -261,8 +262,8 @@ async function refreshSyncStatus(connectionStatus) {
     $('data-updated').textContent = fullTimestamp(data?.updated_at || status.data_updated_at);
     $('cloud-synced').textContent = fullTimestamp(status.synced_at);
     $('source-state').dataset.state = status.source_state;
-    $('source-state').textContent = status.source_state === 'online' ? '本機連線中' : status.source_state === 'offline' ? '本機來源離線' : '等待首次同步';
-    $('sync-detail').textContent = status.version !== data?.version ? '網站已收到較新版本，正在取得最新資料。' : status.source_state === 'online' ? '每 10 秒檢查網站版本；本機確認異動後自動同步。檢查更新不會修改賽事。' : status.source_state === 'offline' ? '超過 2 分鐘未收到本機連線，顯示最後同步資料；恢復連線後會自動更新。' : '目前顯示網站內附資料，尚未收到本機同步。';
+    $('source-state').textContent = status.source_state === 'cloud' ? '雲端後台同步' : status.source_state === 'online' ? '本機連線中' : status.source_state === 'offline' ? '本機來源離線' : '等待首次同步';
+    $('sync-detail').textContent = status.version !== data?.version ? '網站已收到較新版本，正在取得最新資料。' : status.source_state === 'cloud' ? '每 10 秒檢查更新；目前場上由管理員確認，預定時間不代表已開賽。' : status.source_state === 'online' ? '每 10 秒檢查網站版本；本機確認異動後自動同步。檢查更新不會修改賽事。' : status.source_state === 'offline' ? '超過 2 分鐘未收到本機連線，顯示最後同步資料；恢復連線後會自動更新。' : '目前顯示網站內附資料，尚未收到本機同步。';
   } catch {
     $('data-updated').textContent = fullTimestamp(data?.updated_at);
     $('source-state').textContent = '同步狀態暫時無法確認';
@@ -315,3 +316,70 @@ $('search').addEventListener('keydown', event => {
   if (selectedPlayer) focusPersonalSummary();
   else $('schedule-heading').scrollIntoView({block:'start', behavior:'instant'});
 });
+
+
+function courtsView(matches) {
+  const root = node('section', null, 'court-board');
+  root.append(node('p', '進行中以賽務確認為準；接下來依已叫號優先、預定時間排序，延誤與未定對戰仍可能調整。此頁沿用上方搜尋與篩選條件。', 'court-board-note'));
+  const courts = data.courts.filter(court => !$('court').value || court.id === $('court').value)
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+  const grid = node('div', null, 'court-board-grid');
+  for (const court of courts) {
+    const {current, upcoming} = courtMatches(matches, court.id);
+    const section = navigationTarget(panel(court.name, `${current.length} 場進行中 · ${upcoming.length} 場待比賽`), `court-${court.id}`, '場地賽況', court.name);
+    section.classList.add('court-board-court');
+    section.append(node('h3', '進行中', 'court-current-heading'));
+    if (current.length > 1) section.append(node('p', '此場地有多場標記為進行中，請向賽務確認。', 'notice'));
+    if (!current.length) section.append(node('p', '目前沒有符合篩選的進行中比賽。', 'empty'));
+    for (const match of current) section.append(courtMatchCard(match));
+    section.append(node('h3', '接下來的比賽', 'court-upcoming-heading'));
+    if (!upcoming.length) section.append(node('p', '目前沒有符合篩選的待比賽場次。', 'empty'));
+    for (const match of upcoming.slice(0, 3)) section.append(courtMatchCard(match));
+    if (upcoming.length > 3) {
+      const more = node('details', null, 'court-queue-more');
+      more.dataset.court = court.id;
+      more.append(node('summary', `查看其餘 ${upcoming.length - 3} 場待比賽`));
+      for (const match of upcoming.slice(3)) more.append(courtMatchCard(match));
+      section.append(more);
+    }
+    grid.append(section);
+  }
+  root.append(grid);
+  if (!courts.length) root.append(node('p', '目前尚未提供場地資料。', 'empty'));
+  const unassigned = matches.filter(match => !match.court_id && !match.result && ['planned', 'ready', 'in_progress'].includes(match.status));
+  if (unassigned.length) root.append(node('p', `另有 ${unassigned.length} 場尚未安排場地，請至「賽程與成績」查看。`, 'notice'));
+  return root;
+}
+
+function courtMatchCard(match) {
+  const el = card(match);
+  el.prepend(node('p', `${label('divisions', match.division_id)} · ${label('stages', match.stage_id)}`, 'ticket-competition'));
+  if (match.status === 'in_progress' && match.delay_active) el.append(node('p', '賽務狀態：進行中', 'status-playing'));
+  return el;
+}
+
+function renderLiveNow() {
+  if (!data) return;
+  $('live-now-updated').textContent = `資料更新 ${fullTimestamp(data.updated_at)}`;
+  const cards = data.courts.map(court => {
+    const matches = data.matches.filter(match => match.court_id === court.id);
+    const active = matches.find(match => match.status === 'in_progress');
+    const card = node('article', null, 'live-now-card' + (active ? ' is-playing' : ''));
+    const head = node('div', null, 'live-now-card-heading');
+    head.append(node('h3', court.name), node('span', active ? '比賽中' : '目前未開賽', 'live-now-state'));
+    card.append(head);
+    if (active) {
+      const division = data.divisions.find(row => row.id === active.division_id);
+      card.append(node('p', `${division?.name || ''} · 第 ${active.code} 場`, 'live-now-division'));
+      const names = node('div', null, 'live-now-players');
+      names.append(node('strong', active.side_a.name), node('span', '對'), node('strong', active.side_b.name));
+      card.append(names, node('p', `預定 ${fullTimestamp(active.planned_start_at)}`, 'live-now-time'), node('p', `實際開賽 ${fullTimestamp(active.started_at)}`, 'live-now-time'));
+    } else {
+      card.append(node('p', '等待管理員確認下一場開賽。', 'live-now-idle'));
+      const next = [...matches].filter(match => ['planned','ready'].includes(match.status) && match.side_a.resolution === 'confirmed' && match.side_b.resolution === 'confirmed').sort((a,b) => (a.planned_start_at || '').localeCompare(b.planned_start_at || ''))[0];
+      if (next) {const division = data.divisions.find(row => row.id === next.division_id);card.append(node('p', `待開賽・第 ${next.code} 場 · ${division?.name || ''}`, 'live-now-division'), node('p', `${next.side_a.name} 對 ${next.side_b.name}`, 'live-now-next'), node('p', `預定 ${fullTimestamp(next.planned_start_at)}`, 'live-now-time'));}
+    }
+    return card;
+  });
+  $('live-now-courts').replaceChildren(...cards);
+}

@@ -62,6 +62,7 @@ async function ingest(request, env, path) {
   try { value=JSON.parse(raw); } catch { return json({error:'Invalid JSON'},400); }
   const {object,current} = await readCurrent(env);
   const now = new Date().toISOString();
+  if(current?.authority==='cloud')return json({error:'Cloud publication controls this site'},409);
   const expected = env.SYNC_WORKSPACE_ID || BOOTSTRAP.workspace_id;
   if (value.workspace_id !== expected) return json({error:'Unexpected workspace'},409);
   if (path === '/sync/heartbeat') {
@@ -92,6 +93,7 @@ async function ingest(request, env, path) {
 export async function handle(request, env) {
   const path = new URL(request.url).pathname;
   if (path.startsWith('/sync/')) {
+    if(path==='/sync/cloud-publish')return request.method==='POST'?cloudPublish(request,env):json({error:'Method not allowed'},405);
     if (!['/sync/update','/sync/heartbeat'].includes(path)) return json({error:'Not found'},404);
     return request.method === 'POST' ? ingest(request,env,path) : json({error:'Method not allowed'},405);
   }
@@ -99,7 +101,7 @@ export async function handle(request, env) {
   if (['/public/version.json','/public/status.json'].includes(path)) {
     if (!env.BUCKET) return json({error:'Storage unavailable'},503);
     const {current}=await readCurrent(env);
-    if (path.endsWith('status.json')) return json({mode:'live',data_updated_at:current?.descriptor.updated_at || BOOTSTRAP.updated_at,synced_at:current?.synced_at || null,last_heartbeat_at:current?.last_heartbeat_at || null,source_state:!current ? 'awaiting' : Date.now()-Date.parse(current.last_heartbeat_at)<120000 ? 'online' : 'offline',version:current?.descriptor.version || BOOTSTRAP.version});
+    if (path.endsWith('status.json')) return json({mode:'live',data_updated_at:current?.descriptor.updated_at || BOOTSTRAP.updated_at,synced_at:current?.synced_at || null,last_heartbeat_at:current?.last_heartbeat_at || null,schedule_published_at:current?.schedule_published_at??null,live_updated_at:current?.live_updated_at??null,source_state:current?.authority==='cloud'?'cloud':!current ? 'awaiting' : Date.now()-Date.parse(current.last_heartbeat_at)<120000 ? 'online' : 'offline',version:current?.descriptor.version || BOOTSTRAP.version});
     const descriptor=current?.descriptor || BOOTSTRAP;
     const etag='"'+descriptor.version+'"';
     if (request.headers.get('If-None-Match')===etag) return new Response(null,{status:304,headers:{ETag:etag,'Cache-Control':'no-store'}});

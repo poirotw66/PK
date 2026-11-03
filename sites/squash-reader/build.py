@@ -67,9 +67,14 @@ def main() -> None:
     schedule_start = script.index("function schedule(matches) {")
     render_start = script.index("function render() {", schedule_start)
     script = script[:schedule_start] + (root / "experience.js").read_text(encoding="utf-8") + "\n" + script[render_start:]
+    script = replace_once(script, "const viewNames = {", "const viewNames = {courts:'各場地賽況',")
+    script = replace_once(script, "(bracket|standings|schedule)", "(bracket|standings|schedule|courts)")
+    script = replace_once(script, "if (matches.length) content.append(", "if (view === 'courts') content.append(courtsView(matches));\n  else if (matches.length) content.append(")
+    script = replace_once(script, "  if (match.delay_active)", "  if (match.status === 'completed' && !match.result) return '已結束・成績待登錄';\n  if (match.delay_active)")
+    script = replace_once(script, "if (singles.length) {", "if (singles.length && view !== 'courts') {")
     script = replace_once(script, "  const matches = visible();", "  syncBrowseControls();\n  const matches = visible();")
     script = replace_once(script, "$('reader-navigation').open = !compactNavigation.matches;", "$('reader-navigation').open = false;")
-    script = "import {playerNames, matchesPlayer, queryState, stateSearch, orderedMatches} from './reader-state.mjs';\n" + script
+    script = "import {playerNames, matchesPlayer, queryState, stateSearch, orderedMatches, courtMatches} from './reader-state.mjs';\n" + script
     script = replace_once(script, "hashView() || 'schedule'", "hashView() || queryState(location.search).view")
     script = replace_once(script, "return data.matches.filter(m =>", "return data.matches.filter(m => (!selectedPlayer || matchesPlayer(m, selectedPlayer)) &&")
     script = replace_once(script, "  render();\n}\n\nfunction connection", "  prepareReaderState();\n  render();\n}\n\nfunction connection")
@@ -77,6 +82,8 @@ def main() -> None:
     script = replace_once(script, "$('search').addEventListener('input', filterChanged)", "$('search').addEventListener('input', searchChanged)")
     script = replace_once(script, "view = el.dataset.view; history.replaceState(null,'',location.pathname+location.search);", "view = el.dataset.view; writeQueryState();")
     script = replace_once(script, "function connection(status) {", "function connection(status) {\n  void refreshSyncStatus(status);")
+    script = replace_once(script, "  const matches = visible();", "  const expandedQueues = new Set([...document.querySelectorAll('.court-queue-more[open]')].map(el => el.dataset.court));\n  const matches = visible();")
+    script = replace_once(script, "  $('content').replaceChildren(content);", "  $('content').replaceChildren(content);\n  for (const el of document.querySelectorAll('.court-queue-more')) el.open = expandedQueues.has(el.dataset.court);")
     (dist / "index.html").write_text(html, encoding="utf-8")
     (dist / "live.mjs").write_text(script, encoding="utf-8")
     documents = {

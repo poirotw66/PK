@@ -21,3 +21,13 @@
 
 .batch-caption{grid-column:1/-1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}.batch-caption strong{font-weight:500;color:var(--ink)}.batch-caption span{font-size:11px;color:var(--muted)}
 @media(max-width:640px){.batch-caption{font-size:12px;gap:4px;padding:6px 0}.batch-caption span{font-size:10px;flex-basis:100%}}
+
+/* Per-court live board shares the existing match and panel styles. */
+.court-board-note { margin: 0 0 20px; color: var(--muted, #52615a); line-height: 1.7; }
+.court-board-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.court-board-court { min-width: 0; }
+.court-board-court .match { margin: 12px 0; }
+.court-current-heading, .court-upcoming-heading { font-size: 16px; margin: 22px 0 10px; }
+.court-current-heading { color: #1b694c; }
+.court-queue-more summary { cursor: pointer; padding: 12px 0; }
+@media (max-width: 800px) { .court-board-grid { grid-template-columns: minmax(0, 1fr); } }

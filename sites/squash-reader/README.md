@@ -18,3 +18,13 @@ An optional local `public-documents/manifest.json` can supply a PDF: `filename`,
 omits PDF controls. Never commit that directory or production event data.
 Set your own local `.openai/hosting.json` before deployment. macOS background sync
 scripts are optional and require a local host setting and Keychain credential.
+
+## Cloud court updates
+
+The reader accepts `/sync/cloud-publish` only with the dedicated Sites runtime secret `CLOUD_PUBLISH_SECRET` and matching `PUBLISH_SOURCE_ID`. Messages are HMAC signed over timestamp, endpoint path, and exact JSON bytes. The cloud envelope contains an explicit public field allowlist and is merged into the existing public snapshot without replacing participant identities, bracket metadata, standings, or scores.
+
+A monotonic source sequence and conditional R2 pointer prevent replay and concurrent overwrite. After the first accepted cloud message, legacy `/sync/update` and `/sync/heartbeat` requests cannot replace the cloud-controlled state. Deploying this code alone does not change the current published schedule or start matches.
+
+The prominent current-court area displays all courts independently of search filters. Scheduled time and administrator-confirmed actual start are distinct. The existing ten-second polling retrieves updates; connection failures retain the last successful data.
+
+`node --test tests/*.test.mjs` checks the built Worker. Local preview supports `PORT` (default 8780) and an optional `PREVIEW_SNAPSHOT` file for matching synthetic integration fixtures. Preview secrets are test-only literals and are never used in production.
