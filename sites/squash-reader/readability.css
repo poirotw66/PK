@@ -1,0 +1,194 @@
+/* Large type is the default across devices; browser text-size preferences still apply. */
+body.schedule-first {
+  --muted: #4e6056;
+  font-size: 1.25rem;
+  line-height: 1.7;
+}
+.schedule-first button,
+.schedule-first input,
+.schedule-first select,
+.schedule-first summary,
+.schedule-first .pdf-download-link {
+  min-height: 52px;
+}
+.schedule-first button,
+.schedule-first input,
+.schedule-first select {
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+.schedule-first input::placeholder { font-size: 1.125rem; }
+.schedule-first .player-name,
+.schedule-first .side-name,
+.schedule-first .side.pending .side-name { font-size: 1.625rem; line-height: 1.6; }
+.schedule-first .side-origin,
+.schedule-first .match-head,
+.schedule-first .match-footer,
+.schedule-first .qualifier-label,
+.schedule-first .entry-status,
+.schedule-first .graph-key,
+.schedule-first .polygon-key,
+.schedule-first .standings-group p,
+.schedule-first .standings-table th { font-size: 1.125rem; line-height: 1.7; }
+.schedule-first .side-score { font-size: 1.5rem; }
+.schedule-first .side-name { white-space: normal; overflow-wrap: anywhere; }
+.schedule-first .ticket-competition,
+.schedule-first .ticket-foot,
+.schedule-first .court-tag { font-size: 1.125rem; }
+.schedule-first .ticket-time,
+.schedule-first .slot-clock { font-size: 1.875rem; }
+.schedule-first .match-ticket { padding: 20px; }
+.schedule-first .ticket-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.schedule-first .ticket-foot,
+.schedule-first .match-head,
+.schedule-first .match-footer { flex-wrap: wrap; gap: 8px 16px; }
+.schedule-first .ticket-player { align-items: baseline; }
+.schedule-first .ticket-players { gap: 10px; }
+.schedule-first .ticket-competition { margin-block: 12px 16px; }
+.schedule-first .live-now-card { padding: 16px 18px; }
+.schedule-first .live-now-card-heading { flex-wrap: wrap; align-items: baseline; }
+.schedule-first .live-now-state { font-size: 1.125rem; white-space: normal; }
+.schedule-first .live-now-division { font-size: 1.125rem; opacity: 1; }
+.schedule-first .live-now-next { font-size: 1.5rem; font-weight: 600; }
+.schedule-first .live-now-players strong { font-size: 1.875rem; }
+.schedule-first .live-now-idle,
+.schedule-first .live-now-note,
+.schedule-first .live-now-heading > p { color: #e0eadf; }
+.schedule-first .live-now-heading { flex-wrap: wrap; }
+.schedule-first .browse-controls { display: block; }
+.schedule-first .browse-heading { flex-wrap: wrap; gap: 10px 24px; margin-bottom: 18px; }
+.schedule-first .filter-selects { flex-wrap: wrap; gap: 16px; }
+.schedule-first .filter-selects label { flex: 1; align-items: stretch; flex-direction: column; font-size: 1.125rem; }
+.schedule-first .filter-selects select { width: 100%; max-width: none; }
+.schedule-first .tabs { flex-wrap: wrap; gap: 12px 24px; }
+.schedule-first .tabs button { padding: 14px 8px; }
+.schedule-first .date-share-row { flex-wrap: wrap; align-items: stretch; }
+.schedule-first .date-share-row .day-tabs { flex-wrap: wrap; }
+.schedule-first .date-share-row .day-tab { min-width: 150px; padding: 12px 16px; gap: 8px; }
+.schedule-first .date-share-row .day-tab strong { font-size: 1.375rem; }
+.schedule-first .personal-summary h2 { margin-right: 0; }
+.schedule-first .personal-summary .leave-personal { position: static; margin-top: 16px; }
+.schedule-first .sync-status > summary { flex-wrap: wrap; padding-block: 12px; }
+.schedule-first .sync-stamp { flex-wrap: wrap; }
+.schedule-first .summary { max-width: none; white-space: normal; }
+.schedule-first .round { width: 320px; }
+.schedule-first .match { min-width: 0; }
+.schedule-first .standings-table { font-size: 1.25rem; min-width: 880px; }
+.schedule-first .standings-table th:first-child,
+.schedule-first .standings-table td:first-child { width: 220px; }
+.schedule-first .standings-table th,
+.schedule-first .standings-table td { padding: 16px 14px; }
+@media (max-width: 1000px) {
+  .schedule-first .live-now-courts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .schedule-first .match-hero { flex-wrap: wrap; }
+}
+@media (max-width: 640px) {
+  .schedule-first { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+  .schedule-first .topbar { flex-wrap: wrap; gap: 12px; padding: 16px; }
+  .schedule-first .brand { font-size: 1.25rem; }
+  .schedule-first .brand small { font-size: 1rem; }
+  .schedule-first .connection { margin-left: auto; }
+  .schedule-first .connection button { padding-inline: 8px; }
+  .schedule-first .sheet { padding-inline: 16px; }
+  .schedule-first .match-hero { display: block; padding-block: 24px; }
+  .schedule-first .hero-copy h1 { font-size: 2.125rem; }
+  .schedule-first .event-name { max-width: none; font-size: 1.25rem; }
+  .schedule-first .event-actions { display: none; }
+  .schedule-first .query-toolbar { position: static; }
+  .schedule-first .query-toolbar .search-command { padding: 12px; }
+  .schedule-first .search-input input,
+  .schedule-first .search-input input::placeholder { font-size: 1.25rem; }
+  .schedule-first .date-share-row .day-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; flex-basis: 100%; gap: 8px; }
+  .schedule-first .date-share-row .day-tab { min-width: 0; padding: 12px 4px; flex-direction: column; gap: 4px; }
+  .schedule-first .date-share-row .day-tab strong { font-size: 1.25rem; white-space: normal; }
+  .schedule-first .day-caption { font-size: 1rem; white-space: normal; }
+  .schedule-first .share-query { width: 100%; }
+  .schedule-first .live-now { padding: 24px 16px; }
+  .schedule-first .live-now-courts { grid-template-columns: minmax(0, 1fr); gap: 16px; background: transparent; border: 0; }
+  .schedule-first .live-now-card { padding: 16px; border: 1px solid #668475; }
+  .schedule-first .live-now-card-heading { flex-direction: row; align-items: center; gap: 12px; }
+  .schedule-first .live-now h3 { font-size: 1.875rem; }
+  .schedule-first .live-now-next { font-size: 1.625rem; }
+  .schedule-first .live-now-players strong { font-size: 2rem; }
+  .schedule-first .time-slot { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .schedule-first .slot-clock { padding-block: 8px; border-bottom: 2px solid var(--border); }
+  .schedule-first .slot-clock::after { display: none; }
+  .schedule-first .slot-clock time { position: static; }
+  .schedule-first .ticket-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .schedule-first .ticket-competition { grid-column: 1 / -1; grid-row: auto; }
+  .schedule-first .player-name { font-size: 1.625rem; }
+  .schedule-first .browse-heading { display: block; }
+  .schedule-first .summary { text-align: left; margin-top: 8px; }
+  .schedule-first .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+  .schedule-first .tabs button { font-size: 1.125rem; white-space: normal; }
+  .schedule-first .view-row { display: block; }
+  .schedule-first .reset-filters { width: 100%; margin-top: 8px; }
+  .schedule-first .sync-stamp { flex-basis: 100%; font-size: 1rem; }
+  .schedule-first .sync-stamp strong { font-size: 1rem; }
+  .schedule-first #source-state { margin-left: 0; font-size: 1rem; }
+  .schedule-first .mobile-dock { padding-top: 10px; }
+  .schedule-first .mobile-dock > button,
+  .schedule-first .mobile-dock > a { flex-direction: column; font-size: 1.125rem; min-height: 76px; gap: 4px; }
+  .schedule-first .mobile-dock small { font-size: 1rem; }
+  #mobile-filter-fields .filter-selects label,
+  #mobile-filter-fields .filter-selects select,
+  .filter-help,
+  .filter-dialog-actions button { font-size: 1.125rem; }
+}
+.filter-dialog-heading button { font-size: 2rem; }
+@media (max-width: 360px) {
+  .filter-dialog-actions { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The current arrangement leads; the original arrangement remains secondary. */
+.schedule-first .personal-change-notice { margin-top: 20px; padding-top: 24px; border-top: 3px solid #9a6822; color: var(--ink); }
+.schedule-first .personal-change-notice h3 { font-size: 1.75rem; margin: 0 0 8px; }
+.schedule-first .personal-change-notice > p { margin: 0 0 20px; }
+.schedule-first .personal-change-list article { padding: 24px 0; border-top: 1px solid var(--border); }
+.schedule-first .personal-change-list h4 { font-size: 1.125rem; color: var(--muted); margin: 0 0 8px; }
+.schedule-first .changed-match-players { font-size: 1.5rem; font-weight: 600; margin: 0; overflow-wrap: anywhere; }
+.schedule-first .match-ticket.has-personal-change, .schedule-first .match.has-personal-change { border: 2px solid #9a6822; }
+.schedule-first .personal-match-change { grid-column: 1 / -1; margin-top: 16px; overflow-wrap: anywhere; }
+.schedule-first .change-action { font-size: 1.125rem; font-weight: 600; color: #79521b; margin: 0 0 12px; }
+.schedule-first .change-destination { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 20px; background: #f9edc7; border-left: 4px solid #9a6822; }
+.schedule-first .change-destination span { display: block; font-size: 1.125rem; color: #665026; }
+.schedule-first .change-destination strong { display: block; font-size: 2rem; line-height: 1.4; margin-top: 4px; color: var(--ink); }
+.schedule-first .change-previous { font-size: 1.125rem; color: var(--muted); margin: 12px 0 0; }
+.schedule-first .change-removed { padding: 20px; background: #f9edc7; font-size: 1.25rem; }
+.schedule-first .personal-change-actions { display: flex; flex-wrap: wrap; gap: 12px; padding-block: 12px; }
+.schedule-first .personal-change-actions button:first-child { background: var(--ink); color: white; min-width: 180px; }
+.schedule-first .personal-reminder-help { font-size: 1rem; color: var(--muted); margin-top: 8px; }
+.schedule-first .personal-reminder-help summary { cursor: pointer; display: flex; align-items: center; }
+.schedule-first .personal-reminder-help summary::after { content: '＋'; margin-left: 12px; }
+.schedule-first .personal-reminder-help[open] summary::after { content: '−'; }
+.schedule-first .personal-reminder-help p { margin: 8px 0 0; }
+.schedule-first .personal-confirmed { padding: 16px; margin-top: 16px; background: #e1edcf; font-size: 1.125rem; font-weight: 600; }
+@media (max-width: 640px) {
+  .schedule-first .change-destination { gap: 14px; padding: 16px; }
+  .schedule-first .personal-change-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .schedule-first .personal-change-notice h3 { font-size: 1.625rem; }
+}
+
+/* Live scores stay readable without rerendering the schedule on each point. */
+.schedule-first .live-score{padding:18px 0;border-top:1px solid #a8c2b4;margin-top:16px;color:#143b2c}
+.schedule-first .live-score-heading{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:22px}
+.schedule-first .live-score-players{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:14px 0;text-align:center}
+.schedule-first .live-score-player{min-width:0;background:#e6f1e9;padding:16px 10px;border-radius:10px;display:flex;flex-direction:column;justify-content:space-between}
+.schedule-first .live-score-player span{font-size:26px;font-weight:700;overflow-wrap:anywhere;line-height:1.45}
+.schedule-first .live-score-player strong{font-size:68px;line-height:1.2;font-variant-numeric:tabular-nums}
+.schedule-first .live-score-games{font-size:20px;line-height:1.6;margin:10px 0}
+.schedule-first .live-score-note{font-size:18px;line-height:1.6;color:#385b4b;margin:8px 0}
+@media(max-width:480px){.schedule-first .live-score-players{gap:8px}.schedule-first .live-score-player span{font-size:24px}.schedule-first .live-score-player strong{font-size:60px}}
+
+.schedule-first .live-score-waiting{font-size:26px;font-weight:700;overflow-wrap:anywhere}
+
+/* Compact court summaries retain the large player names and point totals. */
+.schedule-first .live-now-heading{margin-bottom:16px}
+.schedule-first .live-now-division{margin:8px 0;line-height:1.45}
+.schedule-first .live-now-idle{margin:10px 0;line-height:1.5}
+.schedule-first .live-now-next{margin:8px 0 0;line-height:1.45}
+.schedule-first .live-now .live-score{margin-top:8px;padding:10px 0 0}
+.schedule-first .live-now .live-score-players{margin:8px 0;gap:10px}
+.schedule-first .live-now .live-score-player{padding:10px 8px}
+.schedule-first .live-now .live-score-games{margin:6px 0;line-height:1.45}
+.schedule-first .live-now .live-score-note{margin:4px 0 0;line-height:1.45}

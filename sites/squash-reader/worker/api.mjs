@@ -93,11 +93,13 @@ async function ingest(request, env, path) {
 export async function handle(request, env) {
   const path = new URL(request.url).pathname;
   if (path.startsWith('/sync/')) {
+    if(path==='/sync/cloud-score')return request.method==='POST'?publishLiveScore(request,env):json({error:'Method not allowed'},405);
     if(path==='/sync/cloud-publish')return request.method==='POST'?cloudPublish(request,env):json({error:'Method not allowed'},405);
     if (!['/sync/update','/sync/heartbeat'].includes(path)) return json({error:'Not found'},404);
     return request.method === 'POST' ? ingest(request,env,path) : json({error:'Method not allowed'},405);
   }
   if (!['GET','HEAD'].includes(request.method)) return json({error:'Method not allowed'},405);
+  if(path==='/public/live-scores.json')return publicLiveScores(env);
   if (['/public/version.json','/public/status.json'].includes(path)) {
     if (!env.BUCKET) return json({error:'Storage unavailable'},503);
     const {current}=await readCurrent(env);
@@ -111,7 +113,9 @@ export async function handle(request, env) {
     const object=await env.BUCKET?.get(path.slice('/public/'.length));
     if (object) return new Response(request.method==='HEAD' ? null : object.body,{headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=31536000, immutable'}});
   }
-  const asset=ASSETS[path==='/' ? '/index.html' : path];
+  const pages={'/':'live','/live':'live','/schedule':'schedule','/brackets':'bracket','/standings':'standings'};
+  const page=pages[path.replace(/\/$/,'')||'/'];
+  const asset=ASSETS[page?'/pages/'+page+'.html':path];
   if (!asset) return json({error:'Not found'},404);
   const body=Uint8Array.from(atob(asset.body),c=>c.charCodeAt(0));
   return new Response(request.method==='HEAD' ? null : body,{headers:{'Content-Type':asset.type,...(asset.type === 'application/pdf' ? {'Content-Disposition':'attachment; filename="'+path.split('/').pop()+'"','Content-Length':String(body.byteLength)} : {}),'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"}});

@@ -97,3 +97,80 @@ test('cloud rejects secrets, participant drift, unresolved starts, bad authoriza
  assert.equal((await cloud(publication(),e,'1000000000')).status,401);
  e.BUCKET.put=async()=>null;assert.equal((await cloud(publication(),e)).status,409);
 });
+
+test('confirmed scores publish the winner and games and cannot be overwritten',async()=>{
+ const e=cloudEnv(),p=publication(),m=p.matches.find(row=>{const old=snapshot.matches.find(x=>x.id===row.id);return old.side_a.resolution==='confirmed'&&old.side_b.resolution==='confirmed'&&old.side_a.entry_id&&old.side_b.entry_id;});
+ m.status='completed';m.started_at=new Date().toISOString();m.result={rules:{best_of:3,target:11,margin:2},winner:'b',games:[{side_a:10,side_b:12},{side_a:7,side_b:11}]};
+ const response=await cloud(p,e);assert.equal(response.status,200,JSON.stringify(await response.clone().json()));
+ const result=(await published(e)).matches.find(row=>row.id===m.id);assert.equal(result.result.winner_entry_id,result.side_b.entry_id);assert.deepEqual(result.result.games,m.result.games);
+ const retry=structuredClone(p);retry.sequence++;assert.equal((await cloud(retry,e)).status,200);
+ const replaced=structuredClone(p);replaced.sequence+=2;replaced.matches.find(row=>row.id===m.id).result={...m.result,winner:'a',games:[{side_a:11,side_b:0},{side_a:11,side_b:0}]};assert.equal((await cloud(replaced,e)).status,409);
+ const legacy=publication(4);legacy.matches.find(row=>row.id===m.id).status='completed';assert.equal((await cloud(legacy,e)).status,200);assert.deepEqual((await published(e)).matches.find(row=>row.id===m.id).result,result.result);
+ const groups=(await published(e)).standings.filter(group=>group.stage_id===result.stage_id&&group.rows.some(row=>row.entry_id===result.side_a.entry_id)&&group.rows.some(row=>row.entry_id===result.side_b.entry_id));
+ assert(groups.length > 0);
+ for(const group of groups){
+  assert.equal(group.status,'provisional');assert(group.rows.every(row=>!row.qualifies&&Number.isInteger(row.rank)));assert(group.notice.startsWith('依已登錄賽果自動計算；'));
+  const winner=group.rows.find(row=>row.entry_id===result.side_b.entry_id),loser=group.rows.find(row=>row.entry_id===result.side_a.entry_id);
+  assert.equal(winner.points,2);assert.equal(winner.wins,1);assert.equal(winner.games_for,2);assert.equal(winner.rank,1);
+  assert.equal(loser.points,1);assert.equal(loser.losses,1);assert.equal(loser.games_against,2);
+ }
+});
+test('finishing a complete pool publishes final numeric standings and repeat publications preserve totals',async()=>{
+ const e=cloudEnv(),p=publication(),group=snapshot.standings.find(group=>group.rows.length>=3);
+ const order=new Map(group.rows.map((row,index)=>[row.entry_id,index]));
+ let count=0;
+ for(const match of snapshot.matches.filter(match=>match.stage_id===group.stage_id&&order.has(match.side_a.entry_id)&&order.has(match.side_b.entry_id))){
+  const patch=p.matches.find(row=>row.id===match.id),winner=order.get(match.side_a.entry_id)<order.get(match.side_b.entry_id)?'a':'b';
+  patch.status='completed';patch.result={rules:{best_of:3,target:11,margin:2},winner,games:[{side_a:winner==='a'?11:0,side_b:winner==='b'?11:0},{side_a:winner==='a'?11:0,side_b:winner==='b'?11:0}]};count++;
+ }
+ assert.equal((await cloud(p,e)).status,200);
+ const result=(await published(e)).standings.find(row=>row.pool_id===group.pool_id&&row.stage_id===group.stage_id);
+ assert.equal(result.status,'final');assert.equal(result.confirmed_matches,count);assert.deepEqual(result.rows.map(row=>row.rank),group.rows.map((_,index)=>index+1));
+ const again=structuredClone(p);again.sequence++;assert.equal((await cloud(again,e)).status,200);
+ assert.deepEqual((await published(e)).standings.find(row=>row.pool_id===group.pool_id&&row.stage_id===group.stage_id),result);
+});
+test('scoring rejects unfinished, impossible, mismatched and private result fields',async()=>{
+ for(const change of [m=>m.result.games[0].side_b=11,m=>m.result.winner='a',m=>m.status='in_progress',m=>m.result.actor='private',m=>m.result.games.push({side_a:0,side_b:11})]){
+  const e=cloudEnv(),p=publication(),m=p.matches.find(row=>{const old=snapshot.matches.find(x=>x.id===row.id);return old.side_a.resolution==='confirmed'&&old.side_b.resolution==='confirmed'&&old.side_a.entry_id&&old.side_b.entry_id;});
+  m.status='completed';m.result={rules:{best_of:3,target:11,margin:2},winner:'b',games:[{side_a:10,side_b:12},{side_a:7,side_b:11}]};change(m);assert([400,409].includes((await cloud(p,e)).status));
+ }
+});
+
+async function liveScore(record,e,timestamp=String(Math.floor(Date.now()/1000)),extra={}) {
+ const raw=JSON.stringify({source_id:e.PUBLISH_SOURCE_ID,record,...extra}),key=await crypto.subtle.importKey('raw',new TextEncoder().encode(e.CLOUD_PUBLISH_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const signature=Buffer.from(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(timestamp+'\n/sync/cloud-score\n'+raw))).toString('hex');
+ return worker.fetch(new Request('https://example.test/sync/cloud-score',{method:'POST',body:raw,headers:{'X-Sync-Time':timestamp,'X-Sync-Signature':signature}}),e);
+}
+function activeScoreFixture() {
+ const p=publication(),used=new Set(),active=[];
+ for(const row of p.matches){const match=snapshot.matches.find(m=>m.id===row.id);if(active.length===2)break;if([match.side_a,match.side_b].some(s=>s.resolution!=='confirmed'||!s.entry_id||used.has(s.entry_id)))continue;row.status='in_progress';row.court_id=snapshot.courts[active.length].id;row.started_at=new Date().toISOString();used.add(match.side_a.entry_id);used.add(match.side_b.entry_id);active.push(row);}
+ const record=row=>({match_id:row.id,started_at:row.started_at,version:1,updated_at:new Date().toISOString(),score:{rules:{best_of:3,target:11,margin:2},games:[],current:{side_a:0,side_b:0},winner:null}});
+ return {p,active,records:active.map(record)};
+}
+test('live points, undo and parallel courts merge without rewriting the schedule',async()=>{
+ const e=cloudEnv(),{p,records}=activeScoreFixture();await cloud(p,e);const version=(await published(e)).version;
+ assert.equal((await get('/public/live-scores.json',e)).status,200);assert.equal((await(await get('/public/live-scores.json',e)).json()).schedule_version,version);
+ const concurrent=await Promise.all(records.map(row=>liveScore(row,e)));assert(concurrent.every(r=>r.status===200));
+ assert.equal((await(await get('/public/live-scores.json',e)).json()).matches.length,2);
+ const point=structuredClone(records[0]);point.version=2;point.score.current.side_a=1;assert.equal((await liveScore(point,e)).status,200);
+ const undo=structuredClone(records[0]);undo.version=3;assert.equal((await liveScore(undo,e)).status,200);
+ const old=await liveScore(point,e);assert.equal(old.status,200);assert.equal((await old.json()).version,3);
+ const visible=(await(await get('/public/live-scores.json',e)).json()).matches.find(m=>m.match_id===undo.match_id);assert.equal(visible.score.current.side_a,0);
+ assert.equal((await published(e)).version,version);
+ const duplicate=structuredClone(undo);duplicate.score.current.side_a=1;assert.equal((await liveScore(duplicate,e)).status,409);
+ assert.equal((await liveScore(undo,e,'1000000000')).status,401);assert.equal((await liveScore(undo,e,undefined,{actor:'private'})).status,400);
+});
+test('live channel rejects invalid points, private fields, ended and restarted sessions',async()=>{
+ const e=cloudEnv(),{p,active,records}=activeScoreFixture();assert.equal((await liveScore(records[0],e)).status,409);await cloud(p,e);
+ for(const change of [r=>r.score.current.side_a=11,r=>r.score.current.side_a=-1,r=>r.score.points=['a'],r=>r.actor='private',r=>r.score.winner='a']){const r=structuredClone(records[0]);change(r);assert.equal((await liveScore(r,e)).status,400);}
+ await liveScore(records[0],e);const end=structuredClone(p);end.sequence++;end.matches.find(m=>m.id===active[0].id).status='completed';await cloud(end,e);assert.equal((await liveScore(records[0],e)).status,409);
+ const restart=structuredClone(p);restart.sequence+=2;restart.matches.find(m=>m.id===active[0].id).started_at=new Date(Date.now()+1000).toISOString();await cloud(restart,e);
+ assert.equal((await liveScore({...records[0],version:2},e)).status,409);
+ const fresh={...records[0],version:3,started_at:restart.matches.find(m=>m.id===active[0].id).started_at};assert.equal((await liveScore(fresh,e)).status,200);
+ e.BUCKET.put=async()=>{throw new Error('Unavailable');};assert.equal((await liveScore({...fresh,version:4},e)).status,503);
+});
+
+test('feature pages load directly, reload safely and preserve unknown-route errors',async()=>{
+ const e=env();for(const [path,page]of [['/','live'],['/live','live'],['/live/','live'],['/schedule','schedule'],['/brackets','bracket'],['/standings','standings'],['/schedule?player=SyntheticPlayer001','schedule']]){const response=await get(path,e);assert.equal(response.status,200,path);const html=await response.text();assert(html.includes('data-page="'+page+'"'));assert(html.includes('aria-label="主要功能"'));assert(html.includes('href="/schedule"'));}
+ assert.equal((await get('/unknown-page',e)).status,404);
+});

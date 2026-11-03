@@ -28,3 +28,20 @@ A monotonic source sequence and conditional R2 pointer prevent replay and concur
 The prominent current-court area displays all courts independently of search filters. Scheduled time and administrator-confirmed actual start are distinct. The existing ten-second polling retrieves updates; connection failures retain the last successful data.
 
 `node --test tests/*.test.mjs` checks the built Worker. Local preview supports `PORT` (default 8780) and an optional `PREVIEW_SNAPSHOT` file for matching synthetic integration fixtures. Preview secrets are test-only literals and are never used in production.
+
+## Feature pages and automatic standings
+
+The reader has separate `/live`, `/schedule`, `/brackets` and `/standings` pages,
+with mobile navigation and backwards-compatible shared links. Active-court scores
+refresh through a separate two-second read-only channel. Personal schedule changes
+remain highlighted until acknowledged.
+
+Confirmed cloud results automatically rebuild affected pool points, wins, losses,
+game totals and numeric ranks. Incomplete pools show provisional ranks. Two-player
+ties use head-to-head, then game difference and point difference; unresolved ties
+share a numeric rank. Complete pools without unresolved ties finish automatically.
+Stage rules are exported from the synthetic workspace, shared by Worker and reader.
+Repeated publications do not accumulate statistics. Existing non-cloud manual
+decisions are preserved; assigning later-round players is a separate operation.
+
+Run all reader checks with `node --test tests/*.test.mjs` after building.

@@ -1,0 +1,114 @@
+/* Task-focused public pages share the existing tournament data and reader. */
+[hidden]{display:none!important}
+body.schedule-first{background:#f5f7f3;color:#193b30;padding-bottom:0}
+.schedule-first .topbar{max-width:1200px;margin:auto;padding:18px 24px;display:flex;align-items:center;gap:24px;border-bottom:0;background:transparent}
+.schedule-first .brand{color:#193b30;flex-shrink:0}
+.schedule-first .brand>span{font-size:26px;letter-spacing:0;font-weight:750}
+.schedule-first .brand small{font-size:18px;letter-spacing:0;margin-top:4px;color:#56695f}
+.schedule-first .connection{margin-left:auto;gap:12px;flex-wrap:wrap;font-size:18px;color:#456052;justify-content:flex-end}
+.schedule-first .connection button{font-size:18px;min-height:48px;padding:8px 16px;color:#193b30;border:1px solid #9caf9f;background:#fff;border-radius:8px}
+.page-nav{max-width:1152px;margin:0 auto;display:flex;border-bottom:1px solid #d1dcd3;gap:8px;padding:0 0 12px}
+.page-nav a,.page-dock a{font-size:22px;font-weight:650;color:#496454;text-decoration:none;display:flex;align-items:center;justify-content:center;min-height:56px;padding:10px 24px;border-radius:8px}
+.page-nav a[aria-current=page]{background:#1b4336;color:#fff}
+.page-nav a:hover{background:#e0eadf;color:#173d2c}
+.page-nav a:focus-visible,.page-dock a:focus-visible,.court-schedule-link:focus-visible{outline:3px solid #477f31;outline-offset:3px}
+.schedule-first .sheet{max-width:1200px;margin:auto;padding:0 24px 24px}
+.schedule-first .match-hero{display:block;padding:26px 0 20px;margin:0;border:0;background:transparent;min-height:0}
+.schedule-first .match-hero h1{font-size:38px;line-height:1.25;letter-spacing:0;margin:0 0 8px}
+.schedule-first .event-name{font-size:20px;line-height:1.5;margin:0 0 8px;color:#526456}
+.page-description{font-size:22px;line-height:1.5;margin:0 0 10px;color:#345440}
+.page-disclaimer{font-size:16px;color:#5b644c;display:inline-block}
+.schedule-first .live-now{background:transparent;color:inherit;margin:0;padding:0;border:0}
+.schedule-first .live-now-courts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;border:0;background:transparent}
+.schedule-first .live-now-card,.schedule-first .live-now-card.is-playing{background:#fff;border:1px solid #c9d8cc;border-radius:12px;padding:20px;color:#193b30}
+.schedule-first .live-now-card.is-playing{border-top:5px solid #347646;padding-top:16px}
+.schedule-first .live-now-card-heading{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+.schedule-first .live-now h3{font-size:30px;font-weight:700;line-height:1.2}
+.schedule-first .live-now-state{font-size:18px;background:#eff3ee;border:0;border-radius:5px;padding:6px 10px;color:#526456}
+.schedule-first .is-playing .live-now-state{background:#e0efdb;color:#245328}
+.schedule-first .live-now-division{font-size:20px;margin:16px 0 10px;line-height:1.5;color:#455e4e}
+.schedule-first .live-now-next{font-size:26px;line-height:1.55;margin:4px 0 12px}
+.schedule-first .live-now-idle{font-size:20px;line-height:1.5;color:#576c5c;margin:18px 0}
+.schedule-first .live-now-note{font-size:18px;line-height:1.5;color:#586d5c;margin:16px 0}
+.court-schedule-link{display:flex;align-items:center;min-height:48px;margin-top:12px;padding-top:12px;border-top:1px solid #e1e8e0;font-size:20px;font-weight:650;color:#2c663c;text-decoration:none}
+.schedule-first .live-now .live-score{color:#193b30}
+.schedule-first .live-score-player{border-radius:8px;background:#ecf3e9}
+.schedule-first .live-score-note{font-size:16px;color:#4e6754}
+.schedule-first .query-toolbar{position:static;display:block;background:#fff;border:1px solid #d2dfd4;border-radius:12px;padding:20px;margin:0 0 20px;box-shadow:none}
+.schedule-first .search-command label{display:block;font-size:24px;font-weight:700;margin:0 0 12px;color:#193b30;letter-spacing:0}
+.schedule-first .search-input{border:2px solid #638769;border-radius:8px;min-height:60px;background:#fff}
+.schedule-first .search-input input{font-size:24px;min-width:0;min-height:56px;padding:10px 12px;background:transparent}
+.schedule-first .search-input input::placeholder{font-size:22px;color:#627265}
+.schedule-first .search-hint{display:none}
+.schedule-first .date-share-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.schedule-first .date-share-row .day-tabs{display:flex;gap:8px;flex:1 1 100%;width:100%}
+.schedule-first .day-tab{flex:1;min-height:64px;border-radius:8px;border:1px solid #bccfbe;background:#f6f9f4;color:#33563a;gap:3px;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.schedule-first .day-tab[aria-pressed=true]{background:#1c4637;color:#fff;border-color:#1c4637}
+.schedule-first .day-caption{font-size:16px;line-height:1.3}
+.schedule-first .day-tab strong{font-size:22px;line-height:1.35}
+.schedule-first #mobile-filters,.schedule-first #share-query{font-size:20px;min-height:52px;border:1px solid #abc1ae;background:#fff;color:#284e34;border-radius:8px;padding:10px 18px;width:auto;flex:1}
+.schedule-first .browse-controls{display:block;position:static;margin:0 0 20px;padding:0;background:none;border:0}
+.schedule-first .browse-heading{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.schedule-first .browse-heading h2{font-size:24px;line-height:1.4;margin:0}
+.schedule-first .summary{font-size:18px;line-height:1.5;color:#526855}
+.schedule-first .view-row{display:block;margin:0}
+.schedule-first .filter-row{margin:0}.schedule-first .filter-selects{display:flex;flex-wrap:wrap;gap:16px}
+.schedule-first .filter-selects label{font-size:20px;flex:1;min-width:160px}
+.schedule-first select{font-size:22px;min-height:56px;border-radius:8px;border:1px solid #a6bda9;background:#fff;color:#193b30}
+.schedule-first .reader-layout{display:block}.schedule-first .reader-sidebar{display:none}
+.schedule-first .personal-summary{background:#e9f1e5;border-radius:10px;padding:20px;margin:0 0 20px}
+.schedule-first .match-ticket{border-radius:10px;background:#fff;border:1px solid #d0ddd1;padding:18px}
+.schedule-first .ticket-competition{font-size:18px;margin:8px 0 12px;line-height:1.5}
+.schedule-first .time-slot{grid-template-columns:88px minmax(0,1fr);gap:16px}
+.schedule-first .ticket-grid{gap:14px}
+body[data-page=bracket] .filter-selects label:not(:first-child),body[data-page=standings] .filter-selects label:not(:first-child){display:none}
+body[data-page=bracket] .filter-selects label:first-child,body[data-page=standings] .filter-selects label:first-child{max-width:520px}
+body[data-page=bracket] .filter-selects label,body[data-page=standings] .filter-selects label{font-size:22px;font-weight:650}
+.schedule-first .event-information{border-top:1px solid #d3ddd2;margin-top:28px;padding-top:16px}
+.event-information>summary{font-size:18px;min-height:48px;cursor:pointer;display:list-item;align-content:center;color:#4b6350}
+.schedule-first .event-actions{display:flex;gap:20px;flex-wrap:wrap;align-items:start;justify-content:space-between;margin:16px 0}
+.schedule-first .hero-stat{display:none}.schedule-first .pdf-download{display:block;max-width:500px}
+.schedule-first .pdf-download p,.schedule-first .pdf-download small{font-size:16px;line-height:1.5}
+.schedule-first .sync-strip{margin-top:12px}.schedule-first .sync-status summary{flex-wrap:wrap}
+.schedule-first footer{font-size:16px;line-height:1.6;display:flex;gap:12px 20px;flex-wrap:wrap;border-top:0;padding-top:20px}
+.schedule-first footer p{margin:0;width:100%}
+.page-dock{display:none}
+@media(max-width:640px){
+ body.schedule-first{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+ .schedule-first .topbar{position:static;padding:14px 16px;gap:10px;align-items:center}
+ .schedule-first .brand svg{width:28px;height:32px}.schedule-first .brand>span{font-size:23px}.schedule-first .brand small{font-size:16px}
+ .schedule-first .connection{gap:6px;max-width:48%}.schedule-first .connection>span{font-size:16px;line-height:1.3}.schedule-first .connection button{min-height:44px;font-size:16px;padding:6px 10px}
+ .page-nav{display:none}.schedule-first .sheet{padding:0 16px 16px}
+ .schedule-first .match-hero{padding:16px 0 18px}.schedule-first .match-hero h1{font-size:34px}.schedule-first .event-name{font-size:18px;line-height:1.5}.page-description{font-size:20px;margin-bottom:8px}.page-disclaimer{font-size:16px}
+ .schedule-first .live-now-courts{grid-template-columns:minmax(0,1fr);gap:14px}
+ .schedule-first .live-now-card,.schedule-first .live-now-card.is-playing{padding:16px}.schedule-first .live-now h3{font-size:28px}
+ .schedule-first .live-now .live-score-player span{font-size:24px}.schedule-first .live-now .live-score-player strong{font-size:60px}
+ .schedule-first .query-toolbar{padding:16px;margin-bottom:18px}.schedule-first .search-command label{font-size:22px}.schedule-first .search-input input{font-size:22px;padding:8px}.schedule-first .search-input input::placeholder{font-size:20px}
+ .schedule-first .search-input svg{width:20px;flex-shrink:0}.schedule-first .search-input{gap:4px;padding-inline:8px}.schedule-first .search-input #clear-search{font-size:18px;padding:6px}
+ .schedule-first .day-tab{padding:8px 4px}.schedule-first .day-tab strong{font-size:20px}.schedule-first .day-caption{font-size:16px}
+ .schedule-first .browse-heading{align-items:start;flex-direction:column;gap:4px}.schedule-first .summary{margin:0}
+ .schedule-first .time-slot{grid-template-columns:minmax(0,1fr);gap:8px}.schedule-first .slot-clock{padding:8px 0}
+ .schedule-first .ticket-grid{grid-template-columns:minmax(0,1fr)}
+ .page-dock{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #bbcdbd;z-index:40;gap:4px}
+ .page-dock a{font-size:18px;min-height:60px;line-height:1.3;padding:8px 2px;text-align:center;white-space:nowrap}
+ .page-dock a[aria-current=page]{background:#1c4637;color:#fff}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+body[data-page=live] .query-toolbar,body[data-page=live] .browse-controls,body[data-page=live] .reader-layout,body[data-page=live] #personal-summary,body[data-page=live] #share-feedback{display:none!important}
+body:not([data-page=live]) .live-now{display:none!important}
+body[data-page=bracket] .query-toolbar,body[data-page=standings] .query-toolbar,body[data-page=bracket] #personal-summary,body[data-page=standings] #personal-summary{display:none!important}
+body[data-page=bracket] .filter-home,body[data-page=standings] .filter-home{display:block}
+
+body[data-page=bracket] .browse-controls,body[data-page=standings] .browse-controls{background:#fff;border:1px solid #cbdacd;border-radius:12px;padding:20px}
+body[data-page=bracket] #content>.panel,body[data-page=standings] #content>.panel{background:#fff;border:1px solid #d3dfd4;border-radius:12px;padding:24px}
+.schedule-first .event-information .pdf-download{padding-left:0;border:0}
+.schedule-first .event-information .pdf-download-link{font-size:20px;min-height:48px;display:inline-flex;align-items:center}
+
+.query-context{font-size:20px;line-height:1.5;padding:10px;background:#edf3e8;border-radius:6px}
+@media(max-width:640px){.page-dock a{font-size:20px}}
+
+.court-next-matches{margin-top:12px;border-top:1px solid #e0e9e0;padding-top:4px}
+.court-next-matches summary{font-size:20px;min-height:48px;align-content:center;cursor:pointer;color:#335c3b}
+.court-queue-entry{padding:12px 0;border-bottom:1px solid #e5ece2}
+.court-queue-entry p{font-size:18px;line-height:1.5;margin:0 0 6px;color:#536b57}
+.court-queue-entry strong{font-size:24px;line-height:1.5;overflow-wrap:anywhere}

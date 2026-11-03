@@ -35,4 +35,4 @@ jobs:
         run: |
           ../../squash-scheduler/.venv/bin/python build.py --scheduler ../../squash-scheduler --workspace ../../squash-scheduler/output/anonymous-demo/tournament
           ../../squash-scheduler/.venv/bin/python scripts/build-worker.py
-          node --test tests/reader-order.test.mjs tests/sync-worker.test.mjs
+          node --test tests/*.test.mjs

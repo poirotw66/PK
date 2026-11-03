@@ -2,6 +2,18 @@ const fields = ['source_id', 'sequence', 'schedule_revision', 'published_at', 'l
 const matchFields = ['id', 'code', 'division', 'side_a', 'side_b', 'status', 'court_id', 'planned_start_at', 'started_at'];
 const exact = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key));
 const iso = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+function scoredResult(value, match) {
+    if (!exact(value, ['rules', 'winner', 'games']) || !exact(value.rules, ['best_of', 'target', 'margin']) || ![3, 5].includes(value.rules.best_of) || ![11, 15].includes(value.rules.target) || value.rules.margin !== 2 || !['a', 'b'].includes(value.winner) || !Array.isArray(value.games) || value.games.length > value.rules.best_of || [match.side_a, match.side_b].some(side => side.resolution !== 'confirmed' || !side.entry_id) || match.side_a.entry_id === match.side_b.entry_id)
+        throw new Error('Invalid scoring result');
+    const wins = { a: 0, b: 0 }, needed = Math.floor(value.rules.best_of / 2) + 1;
+    for (const game of value.games) {
+        if (Math.max(wins.a, wins.b) >= needed || !exact(game, ['side_a', 'side_b']) || ![game.side_a, game.side_b].every(score => Number.isInteger(score) && score >= 0 && score <= 999) || Math.max(game.side_a, game.side_b) !== Math.max(value.rules.target, Math.min(game.side_a, game.side_b) + 2))
+            throw new Error('Invalid game score');
+        wins[game.side_a > game.side_b ? 'a' : 'b']++;
+    }
+    if (wins[value.winner] !== needed) throw new Error('Invalid match winner');
+    return { outcome: 'played', winner_entry_id: (value.winner === 'a' ? match.side_a : match.side_b).entry_id, games: value.games };
+}
 async function cloudPublish(request, env) {
     if (!env.BUCKET)
         return json({ error: 'Storage unavailable' }, 503);
@@ -66,8 +78,24 @@ async function cloudPublish(request, env) {
     const merged = structuredClone(base);
     for (const match of merged.matches) {
         const patch = patches.get(match.id), division = base.divisions.find(row => row.id === match.division_id);
-        if (!exact(patch, matchFields) || patch.code !== match.code || patch.division !== division?.name || typeof patch.side_a !== 'string' || typeof patch.side_b !== 'string' || match.side_a.resolution === 'confirmed' && patch.side_a !== match.side_a.name || match.side_b.resolution === 'confirmed' && patch.side_b !== match.side_b.name || !['planned', 'ready', 'in_progress', 'completed'].includes(patch.status) || patch.court_id !== null && !courts.has(patch.court_id) || patch.planned_start_at !== null && !iso(patch.planned_start_at) || patch.started_at !== null && !iso(patch.started_at) || !!patch.court_id !== !!patch.planned_start_at)
+        if (!(exact(patch, matchFields) || exact(patch, [...matchFields, 'result'])) || patch.code !== match.code || patch.division !== division?.name || typeof patch.side_a !== 'string' || typeof patch.side_b !== 'string' || match.side_a.resolution === 'confirmed' && patch.side_a !== match.side_a.name || match.side_b.resolution === 'confirmed' && patch.side_b !== match.side_b.name || !['planned', 'ready', 'in_progress', 'completed'].includes(patch.status) || patch.court_id !== null && !courts.has(patch.court_id) || patch.planned_start_at !== null && !iso(patch.planned_start_at) || patch.started_at !== null && !iso(patch.started_at) || !!patch.court_id !== !!patch.planned_start_at)
             return json({ error: 'Match identity or field mismatch' }, 409);
+        if (Object.hasOwn(patch, 'result')) {
+            let result;
+            try { result = scoredResult(patch.result, match); }
+            catch { return json({ error: 'Invalid scoring result' }, 400); }
+            if (patch.status !== 'completed' || match.result && JSON.stringify(match.result) !== JSON.stringify(result))
+                return json({ error: 'Result is immutable or match is not completed' }, 409);
+            const changed = !match.result;
+            match.result = result;
+            if (changed) for (const group of merged.standings) {
+                const entries = new Set(group.rows.map(row => row.entry_id));
+                if (group.stage_id !== match.stage_id || !entries.has(match.side_a.entry_id) || !entries.has(match.side_b.entry_id)) continue;
+                group.status = 'manual_review';
+                group.notice = '雲端成績已更新；積分與晉級名次待賽務核定。請以各場比賽成績為準。';
+                for (const row of group.rows) { row.rank = null; row.qualifies = false; }
+            }
+        }
         if (match.result && patch.status !== 'completed')
             return json({ error: 'Result would be overwritten' }, 409);
         if (patch.status === 'in_progress') {
@@ -79,6 +107,7 @@ async function cloudPublish(request, env) {
         }
         Object.assign(match, { status: patch.status, court_id: patch.court_id, planned_start_at: patch.planned_start_at, started_at: patch.started_at, called_at: null, delay_minutes: 0, delay_active: false });
     }
+    merged.standings = recalculateStandings(merged, rankingRules).standings;
     merged.revision_id = value.schedule_revision;
     merged.updated_at = value.created_at;
     merged.version = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ ...merged, version: '' }))));
