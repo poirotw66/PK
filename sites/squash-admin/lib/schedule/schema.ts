@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { resultSchema, scoringRulesSchema, validateResult } from "../scoring";
 const id = z.string().min(1).max(100);
 const minute = z.number().int().nonnegative();
 const point = z.object({ start: minute, end: minute }).strict().refine(v => v.end > v.start);
@@ -23,6 +24,7 @@ export const tournamentSchema = z.object({
         id, code: z.string().min(1).max(50), division: z.string().min(1).max(100),
         stage: z.string().max(100), group: z.string().max(100).nullable(),
         side_a: z.string().max(200), side_b: z.string().max(200),
+        scoring_rules: scoringRulesSchema.optional(), result: resultSchema.optional(),
         players: z.array(id).max(2), status: z.enum(["planned", "ready", "in_progress", "completed"]),
         play: z.number().int().min(1).max(240), buffer: minute, rest: minute, transfer: minute,
         dependencies: z.array(z.object({ id, lag: minute }).strict()).max(500),
@@ -44,6 +46,10 @@ export function readTournament(input: unknown): Tournament {
     const players = new Set(state.players.map(p => p.id)), matches = new Set(state.matches.map(m => m.id));
     const courts = new Set(state.courts.map(c => c.id));
     for (const match of state.matches) {
+        if (match.result) {
+            validateResult(match.result);
+            if (match.status !== "completed") throw new Error("有成績的比賽必須為已完賽狀態。");
+        }
         if (match.players.some(p => !players.has(p)) || new Set(match.players).size !== match.players.length
             || match.dependencies.some(d => !matches.has(d.id) || d.id === match.id)
             || match.assignment && !courts.has(match.assignment.court))

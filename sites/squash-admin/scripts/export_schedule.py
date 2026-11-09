@@ -13,6 +13,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     sys.path.insert(0, str(args.scheduler / "src"))
+    from squash_scheduler.domain.rankings import effective_rules
     from squash_scheduler.operations import OperatorService
     from squash_scheduler.scheduling.constraints import (
         build_context, is_court_locked, is_time_locked, minute,
@@ -46,9 +47,15 @@ def main():
         for prior in sorted(context.dependencies.get(mid, set())):
             lag = max(timing["ranking_confirmation_minutes"], context.timing[prior]["ranking_confirmation_minutes"]) if prior in ranks[mid] else 0
             dependencies.append({"id": prior, "lag": max(lag, context.deferred_lags.get(mid, {}).get(prior, 0))})
+        scoring = effective_rules(snapshot, match.stage_id)
+        if (scoring.get("best_of_games") not in {3, 5}
+                or scoring.get("points_to_win_game") not in {11, 15}
+                or scoring.get("win_by_points") != 2 or scoring.get("point_cap_mode") != "none"):
+            raise SystemExit("The cloud scoreboard requires supported no-cap scoring rules.")
         matches.append({
             "id": mid, "code": row["code"], "division": row["division"], "stage": row["stage"],
             "group": groups.get(mid), "side_a": row["side_a"], "side_b": row["side_b"],
+            "scoring_rules": {"best_of": scoring["best_of_games"], "target": scoring["points_to_win_game"], "margin": 2},
             "players": sorted(context.candidates.get(mid, set())), "status": match.status,
             "play": timing["estimated_play_minutes"], "buffer": timing["court_buffer_minutes"],
             "rest": timing["minimum_player_rest_minutes"], "transfer": timing["court_transfer_minutes"],

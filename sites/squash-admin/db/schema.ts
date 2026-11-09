@@ -1,8 +1,8 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 export const administrator = sqliteTable("administrator", {
     id: integer("id").primaryKey(),
-    owner: text("owner").notNull(),
-    username: text("username"),
+    owner: text("owner").notNull().unique(),
+    username: text("username").unique(),
     passwordHash: text("password_hash"),
 });
 export const sessions = sqliteTable("sessions", {
@@ -62,4 +62,14 @@ export const publicOutbox = sqliteTable("public_outbox", {
   action: text("action").notNull(),
   created: integer("created").notNull(),
   delivered: integer("delivered").notNull().default(0),
+});
+
+export const matchScores = sqliteTable("match_scores", {
+  matchId: text("match_id").primaryKey(),
+  version: integer("version").notNull(),
+  payload: text("payload").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  actor: text("actor").notNull(),
+  syncedVersion: integer("synced_version").notNull().default(0),
+  syncError: text("sync_error"),
 });

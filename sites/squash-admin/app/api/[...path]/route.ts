@@ -1,14 +1,22 @@
+import { retryPublicSync } from "../../../lib/sync-service";
+import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
-import { HttpError, admin, checkOrigin, cookie, createSession, database, identity, ownerIdentity, passwordHash, randomToken, session, verifyPassword } from "../../../lib/auth";
+import { HttpError, adminIdentity, checkCsrf, checkOrigin, cookie, createSession, database, findAdmin, identity, readSession } from "../../../lib/auth";
 import { readTournament } from "../../../lib/schedule/schema";
 import type { Tournament } from "../../../lib/schedule/schema";
 import { review, validate } from "../../../lib/schedule/rules";
 import { controlState, queuePublication, queueLive, flushPublication } from "../../../lib/publication";
 
+import { flushScores } from "../../../lib/score-publication";
+import { readScore, savePoint } from "../../../lib/score-storage";
+import { chatGPTSignOutPath } from "../../chatgpt-auth";
+
 export const dynamic = "force-dynamic";
-const credentials = z.object({ username: z.string().regex(/^[A-Za-z0-9_.-]{3,64}$/), password: z.string().min(12).max(256) }).strict();
 const previewInput = z.object({ revision: z.string().min(1), updates: z.unknown(), reason: z.string().trim().min(1).max(500) }).strict();
 const confirmation = z.object({ id: z.string().min(1).max(100) }).strict();
+function syncScoreInBackground(matchId: string) {
+    waitUntil(flushScores(matchId).catch(() => console.warn("Background score synchronization failed.")));
+}
 function json(value: unknown, status = 200, headers: Record<string, string> = {}) {
     return Response.json(value, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
 }
@@ -55,22 +63,32 @@ async function current() {
 }
 async function handle(request: Request) {
     const path = new URL(request.url).pathname.replace(/^\/api\//, "");
+    if (path === "sync-service") return json(await retryPublicSync(request));
     const db = database();
+    if (request.method === "GET" && path === "status") {
+        const user = await identity();
+        const account = await findAdmin(user);
+        const signIn = { email: user.email, sign_out_url: chatGPTSignOutPath("/") };
+        if (!account)
+            return json({ error: "此帳號沒有管理權限。", sign_in: signIn }, 403);
+        const imported = await db.prepare("SELECT revision FROM tournament WHERE id=1").first();
+        const active = await readSession(request, account.owner) ?? await createSession(request, account.owner);
+        return json(
+            { imported: !!imported, can_import: account.kind === "primary", csrf: active.csrf, sign_in: signIn },
+            200, "setCookie" in active ? { "Set-Cookie": active.setCookie } : {},
+        );
+    }
+    if (request.method !== "GET")
+        checkOrigin(request);
+    const account = await adminIdentity();
+    const active = await readSession(request, account.owner);
+    if (!active)
+        throw new HttpError(401, "操作台工作階段已到期，請重新連線。");
     if (request.method === "GET") {
-        if (path === "status") {
-            const { record } = await ownerIdentity();
-            let active = null;
-            try {
-                active = await session(request);
-            }
-            catch (error) {
-                if (!(error instanceof HttpError) || error.status !== 401)
-                    throw error;
-            }
-            const imported = await db.prepare("SELECT revision FROM tournament WHERE id=1").first();
-            return json({ configured: !!record?.password_hash, imported: !!imported, authenticated: !!active, csrf: active?.csrf, username: active?.username, platform_private: true });
+        if (path === "score") {
+            const matchId = z.string().min(1).max(100).parse(new URL(request.url).searchParams.get("match_id"));
+            return json(await readScore(matchId));
         }
-        await session(request);
         if (path === "control") return json(await controlState());
         if (path === "state") {
             const value = await current();
@@ -79,36 +97,11 @@ async function handle(request: Request) {
         }
         throw new HttpError(404, "找不到此頁面。");
     }
-    checkOrigin(request);
-    if (path === "setup") {
-        const { owner, record } = await ownerIdentity();
-        if (record?.password_hash)
-            throw new HttpError(409, "管理員已設定，請直接登入。");
-        const { username, password } = credentials.parse(await body(request));
-        const salt = randomToken(), hashed = salt + ":" + await passwordHash(password, salt);
-        const result = await db.prepare("INSERT INTO administrator (id,owner,username,password_hash) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET username=excluded.username,password_hash=excluded.password_hash WHERE administrator.owner=excluded.owner AND administrator.password_hash IS NULL").bind(owner, username, hashed).run();
-        if (result.meta.changes !== 1)
-            throw new HttpError(409, "管理員已設定，請重新整理。");
-        return json({ ok: true }, 200, { "Set-Cookie": await createSession(request, owner) });
-    }
-    if (path === "login") {
-        const owner = await identity();
-        const input = z.object({ username: z.string().max(64), password: z.string().max(256) }).strict().parse(await body(request));
-        const now = Date.now();
-        const attempt = await db.prepare("INSERT INTO login_attempts (owner,window,count) VALUES (?,?,1) ON CONFLICT(owner) DO UPDATE SET count=CASE WHEN login_attempts.window<? THEN 1 ELSE login_attempts.count+1 END,window=CASE WHEN login_attempts.window<? THEN excluded.window ELSE login_attempts.window END RETURNING count").bind(owner, now, now - 60000, now - 60000).first<{
-            count: number;
-        }>();
-        if (!attempt || attempt.count > 5)
-            throw new HttpError(429, "登入嘗試次數過多，請一分鐘後再試。");
-        const record = await admin(), valid = await verifyPassword(input.username, input.password, record);
-        if (!valid || record?.owner !== owner)
-            throw new HttpError(401, "帳號或密碼不正確。");
-        return json({ ok: true }, 200, { "Set-Cookie": await createSession(request, owner) });
-    }
+    checkCsrf(request, active.csrf);
     if (path === "import") {
-        const { owner, record } = await ownerIdentity();
-        if (record?.password_hash)
-            await session(request, true);
+        const { owner, kind } = account;
+        if (kind !== "primary")
+            throw new HttpError(403, "只有原管理員可匯入賽程。");
         if (await db.prepare("SELECT id FROM tournament WHERE id=1").first())
             throw new HttpError(409, "賽程已匯入；此版本不提供覆蓋匯入。");
         const state = readTournament(await body(request)), issues = validate(state);
@@ -122,22 +115,35 @@ async function handle(request: Request) {
         ]);
         return json({ ok: true, revision, matches: state.matches.length });
     }
-    const active = await session(request, true);
+    if (path === "score-sync") {
+        const input = z.object({match_id:z.string().min(1).max(100)}).strict().parse(await body(request));
+        syncScoreInBackground(input.match_id);
+        return json({ok:true});
+    }
+    if (path === "score") {
+        const input = z.object({ match_id:z.string().min(1).max(100), version:z.number().int().nonnegative(), action:z.enum(["a","b","undo"]) }).strict().parse(await body(request));
+        const saved = await savePoint(input.match_id, input.version, input.action, account.actor);
+        syncScoreInBackground(input.match_id);
+        return json({...saved, sync_pending:true, sync_error:null});
+    }
     if (path === "publish") {
         const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative()}).strict().parse(await body(request));
-        await queuePublication(input.revision,input.sequence,active.username);
+        await queuePublication(input.revision,input.sequence,account.actor);
         await flushPublication();
+        await flushScores();
         return json(await controlState());
     }
     if (path === "live") {
-        const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative(),action:z.enum(["start","end","cancel"]),court_id:z.string().min(1),match_id:z.string().min(1),reason:z.string().trim().max(300).optional()}).strict().parse(await body(request));
+        const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative(),action:z.enum(["start","end","cancel"]),court_id:z.string().min(1),match_id:z.string().min(1),reason:z.string().trim().max(300).optional(),score_version:z.number().int().nonnegative().optional()}).strict().parse(await body(request));
         if(input.action==="cancel"&&!input.reason)throw new HttpError(400,"撤銷開賽需要填寫原因。");
-        await queueLive(input,active.username);
+        await queueLive(input,account.actor);
         await flushPublication();
+        await flushScores();
         return json(await controlState());
     }
     if (path === "sync-retry") {
         await flushPublication();
+        await flushScores();
         return json(await controlState());
     }
     if (path === "logout") {
@@ -174,7 +180,7 @@ async function handle(request: Request) {
         const revision = crypto.randomUUID(), now = Date.now();
         const results = await db.batch([
             db.prepare("UPDATE tournament SET revision=?,payload=? WHERE id=1 AND revision=?").bind(revision, plan.payload, plan.base),
-            db.prepare("INSERT INTO revisions (id,parent,actor,reason,created,payload,changes) SELECT ?,?,?,?,?,?,? FROM tournament WHERE id=1 AND revision=?").bind(revision, plan.base, active.username, plan.reason, now, plan.payload, plan.changes, revision),
+            db.prepare("INSERT INTO revisions (id,parent,actor,reason,created,payload,changes) SELECT ?,?,?,?,?,?,? FROM tournament WHERE id=1 AND revision=?").bind(revision, plan.base, account.actor, plan.reason, now, plan.payload, plan.changes, revision),
             db.prepare("DELETE FROM previews WHERE id=? AND EXISTS (SELECT 1 FROM tournament WHERE id=1 AND revision=?)").bind(id, revision),
         ]);
         if (results[0].meta.changes !== 1)

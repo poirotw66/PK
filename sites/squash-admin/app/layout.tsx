@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./readability.css";
+import "./mobile-schedule.css";
 
 export const metadata: Metadata = {
   title: "PK 賽程管理台",

@@ -7,7 +7,7 @@ import type { CSSProperties } from "react";
 import type { Match, Tournament, Update } from "../lib/schedule/schema";
 import { localTime, parseLocal } from "../lib/schedule/rules";
 import { clock, editable, nearestOptions, nextAvailablePosition, occupies, placementOptions, withDraft } from "../lib/schedule/placements";
-type Props = {
+export type ScheduleBoardProps = {
     state: Tournament;
     draft: Record<string, Update>;
     day: string;
@@ -25,7 +25,7 @@ type Props = {
         sequence: number;
     } | null;
 };
-export default function ScheduleBoard({ state, draft, day, court, matches, busy, onMove, onEdit, onDiscard, onCourtChange, focusRequest, onBatchMove, onLocate }: Props) {
+export default function ScheduleBoard({ state, draft, day, court, matches, busy, onMove, onEdit, onDiscard, onCourtChange, focusRequest, onBatchMove, onLocate }: ScheduleBoardProps) {
     const boardMain = useRef<HTMLElement>(null);
     const boardScroll = useRef<HTMLDivElement>(null);
     const reasonPanel = useRef<HTMLElement>(null);
@@ -58,6 +58,7 @@ export default function ScheduleBoard({ state, draft, day, court, matches, busy,
     const matchingIds = new Set(matches.map(match => match.id));
     const activeCourt = court || state.courts[0].id;
     const shownCourts = state.courts.filter(row => isMobile ? row.id === activeCourt : !court || row.id === court);
+    const slotHeight = 200;
     const displayGrid = state.grid * Math.ceil(15 / state.grid);
     const first = parseLocal(day + "T" + state.first_start);
     const last = parseLocal(day + "T" + state.last_start);
@@ -150,14 +151,14 @@ export default function ScheduleBoard({ state, draft, day, court, matches, busy,
     </>;
     return <div className="board-workbench">
     <section ref={boardMain} className="board-main" aria-label="場地空檔與比賽時段">
-      <div className="board-instructions"><p><strong>先點比賽，再點空檔</strong><span>綠色位置已檢查選手休息與場地限制；每 {displayGrid} 分鐘一格，其他時間可選建議空檔；儲存前仍會檢查整份賽程。</span></p><div className="board-legend"><span className="legend-free">空檔</span><span className="legend-valid">可移入</span><span className="legend-muted">其他篩選外場次</span></div></div>
+      <div className="board-instructions"><p><strong>先點比賽，再點空檔</strong><span>綠色位置已檢查選手休息與場地限制；每 {displayGrid} 分鐘一格，其他時間可選建議空檔；儲存前仍會檢查整份賽程。</span></p><div className="board-legend"><span className="legend-free">空檔</span><span className="legend-valid">可移入</span><span className="legend-completed">✓ 已完成</span><span className="legend-playing">比賽中</span><span className="legend-muted">其他篩選外場次</span></div></div>
       {isMobile && <>
         <nav className="mobile-courts" aria-label="切換場地">{state.courts.map(row => <button key={row.id} aria-pressed={activeCourt === row.id} onClick={() => onCourtChange(row.id)} title={row.name}><span>{row.name}</span><small>{visible.filter(match => match.assignment?.court === row.id).length} 場</small></button>)}</nav>
         {selected && <div className="mobile-selection"><div><strong>第 {selected.code} 場</strong><span>{selected.side_a} 對 {selected.side_b}</span></div><button disabled={busy} onClick={() => setSheetOpen(true)}>建議空檔 <b>{availableCount}</b></button><button className="selection-close" aria-label="取消選取場次" onClick={() => { setSelectedId(null); setFeedback(""); setBlockedPosition(null); }}>×</button></div>}{selected && toolsActions}
       </>}
       {showReason && <section ref={reasonPanel} className="placement-reason" role="status" aria-live="polite" aria-label="空檔限制原因"><div className="reason-heading"><strong>{clock(blockedPosition!.start)} · {state.courts.find(row => row.id === blockedPosition!.court)?.name} 不能放入</strong><button type="button" aria-label="關閉限制原因" onClick={() => setBlockedPosition(null)}>×</button></div><ul>{reasonMessages.map((message, index) => <li key={index}>{message}</li>)}</ul>{nextPosition ? <div className="reason-next"><p>{nextPosition.court === blockedPosition!.court ? "此場地下一個可移入空檔" : "其他場地可移入空檔"}：<b>{clock(nextPosition.start)} · {state.courts.find(row => row.id === nextPosition.court)?.name}</b></p><button type="button" onClick={viewNextPosition}>查看這個空檔 →</button></div> : <p>今天沒有更晚的可移入空檔，可切換日期或先調整其他場次。</p>}</section>}
       <div ref={boardScroll} className="board-scroll" tabIndex={0} aria-label="場地時間表，可上下左右捲動">
-        <div className="court-board" style={{ "--court-count": shownCourts.length, "--slot-count": times.length } as CSSProperties}>
+        <div className="court-board" style={{ "--court-count": shownCourts.length, "--slot-count": times.length, "--slot-height": `${slotHeight}px` } as CSSProperties}>
           <div className="board-corner">時間</div>{shownCourts.map(row => <div className="board-court-heading" key={row.id}><span>{row.name}</span><small>{day.slice(5).replace("-", "/")}</small></div>)}
           <div className="board-hours">{times.map(start => <div key={start}>{clock(start)}</div>)}</div>
           {shownCourts.map(row => <div key={row.id} className="board-lane">
@@ -176,7 +177,7 @@ export default function ScheduleBoard({ state, draft, day, court, matches, busy,
                 const lane = collisions.findIndex(other => other.id === match.id);
                 const matched = matchingIds.has(match.id);
                 const locked = !editable(match);
-                return <button type="button" key={match.id} data-match-id={match.id} className={"board-match" + (selectedId === match.id ? " is-picked" : "") + (draft[match.id] ? " is-draft" : "") + (!matched ? " is-dimmed" : "") + (collisions.length > 1 ? " is-overlap" : "")} style={{ top: `${(assignment.start - first) / displayGrid * 80 + 3}px`, height: `${Math.max(48, (match.play + match.buffer) / displayGrid * 80 - 6)}px`, left: `calc(${lane / collisions.length * 100}% + 4px)`, width: `calc(${100 / collisions.length}% - 8px)` }} aria-label={`${label(match)} · ${clock(assignment.start)} · ${row.name}${locked ? " · 無法移動" : " · 點選後可選空檔"}`} aria-pressed={selectedId === match.id} disabled={busy} onClick={() => choose(match)}><span className="board-match-meta"><b>{clock(assignment.start)} · {match.code}</b><span>{draft[match.id] ? "草案" : locked ? "已鎖定" : ""}</span></span><strong>{match.side_a} <span>對</span> {match.side_b}</strong><small>{match.division}</small></button>;
+                return <button type="button" key={match.id} data-match-id={match.id} className={"board-match" + (match.status === "completed" ? " is-completed" : match.status === "in_progress" ? " is-playing" : "") + (selectedId === match.id ? " is-picked" : "") + (draft[match.id] ? " is-draft" : "") + (!matched ? " is-dimmed" : "") + (collisions.length > 1 ? " is-overlap" : "")} style={{ top: `${(assignment.start - first) / displayGrid * slotHeight + 3}px`, height: `${Math.max(48, (match.play + match.buffer) / displayGrid * slotHeight - 6)}px`, left: `calc(${lane / collisions.length * 100}% + 4px)`, width: `calc(${100 / collisions.length}% - 8px)` }} aria-label={`${label(match)} · ${clock(assignment.start)} · ${row.name}${match.status === "completed" ? " · 已完成" : match.status === "in_progress" ? " · 比賽中" : ""}${locked ? " · 無法移動" : " · 點選後可選空檔"}`} aria-pressed={selectedId === match.id} disabled={busy} onClick={() => choose(match)}><span className="board-match-meta"><b>{clock(assignment.start)} · {match.code}</b><span>{match.status === "completed" ? "✓ 已完成" : match.status === "in_progress" ? "● 比賽中" : draft[match.id] ? "草案" : locked ? "已鎖定" : ""}</span></span><strong>{match.side_a} <span>對</span> {match.side_b}</strong><small>{match.division}</small></button>;
             })}
           </div>)}
         </div>

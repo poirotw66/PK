@@ -13,34 +13,40 @@ export async function digest(value: string) { return Array.from(new Uint8Array(a
 function equal(a: string, b: string) { if (a.length !== b.length)
     return false; let diff = 0; for (let i = 0; i < a.length; i++)
     diff |= a.charCodeAt(i) ^ b.charCodeAt(i); return diff === 0; }
-export async function passwordHash(password: string, salt: string): Promise<string> {
-    if (!env.ADMIN_PEPPER)
-        throw new HttpError(503, "登入設定尚未完成。");
-    const encoder = new TextEncoder();
-    const pepper = await crypto.subtle.importKey("raw", encoder.encode(env.ADMIN_PEPPER), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const input = await crypto.subtle.sign("HMAC", pepper, encoder.encode(password));
-    const key = await crypto.subtle.importKey("raw", input, "PBKDF2", false, ["deriveBits"]);
-    // Workerd caps PBKDF2 at 100,000 iterations. The pepper is a separate Sites secret.
-    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-512", salt: encoder.encode(salt), iterations: 100000 }, key, 256);
-    return Array.from(new Uint8Array(bits), b => b.toString(16).padStart(2, "0")).join("");
-}
 export async function identity() {
     const user = await getChatGPTUser();
     if (!user)
         throw new HttpError(401, "請先透過 Sites 登入。");
-    return user.userId;
+    return user;
 }
-export type Admin = {
+type Admin = {
     owner: string;
     username: string | null;
-    password_hash: string | null;
 };
-export async function admin() { return database().prepare("SELECT owner,username,password_hash FROM administrator WHERE id=1").first<Admin>(); }
-export async function ownerIdentity() {
-    const owner = await identity(), record = await admin();
-    if (record && record.owner !== owner)
+export async function findAdmin(user: Awaited<ReturnType<typeof identity>>) {
+    const db = database();
+    const primary = await db.prepare("SELECT owner,username FROM administrator WHERE id=1").first<Admin>();
+    const email = user.email.trim().toLowerCase();
+    const isPrimary = primary
+        ? primary.owner === user.userId
+        : email.length > 0 && env.PRIMARY_ADMIN_EMAIL?.trim().toLowerCase() === email;
+    if (isPrimary)
+        return { owner: user.userId, kind: "primary" as const, actor: primary?.username ?? email };
+
+    const invited = email.length > 0 && (
+        env.ADDITIONAL_ADMIN_EMAIL?.trim().toLowerCase() === email
+        || env.ADDITIONAL_ADMIN_EMAILS?.split(",").some(entry => entry.trim().toLowerCase() === email)
+    );
+    if (!primary || !invited)
+        return null;
+    const record = await db.prepare("SELECT username FROM administrator WHERE id<>1 AND owner=?").bind(user.userId).first<Pick<Admin, "username">>();
+    return { owner: user.userId, kind: "additional" as const, actor: record?.username ?? email };
+}
+export async function adminIdentity() {
+    const account = await findAdmin(await identity());
+    if (!account)
         throw new HttpError(403, "此帳號沒有管理權限。");
-    return { owner, record };
+    return account;
 }
 export function checkOrigin(request: Request) {
     const url = new URL(request.url);
@@ -55,13 +61,10 @@ function cookieName(request: Request) { return new URL(request.url).protocol ===
 export function cookie(request: Request, token: string, clear = false) {
     return `${cookieName(request)}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${clear ? 0 : 28800}${new URL(request.url).protocol === "https:" ? "; Secure" : ""}`;
 }
-export async function session(request: Request, write = false) {
-    const { owner, record } = await ownerIdentity();
-    if (!record?.password_hash)
-        throw new HttpError(401, "請先設定管理員帳密。");
+export async function readSession(request: Request, owner: string) {
     const raw = request.headers.get("Cookie")?.split(";").map(v => v.trim()).find(v => v.startsWith(cookieName(request) + "="))?.split("=")[1] ?? "";
     if (!/^[a-f0-9]{64}$/.test(raw))
-        throw new HttpError(401, "請登入管理員帳號。");
+        return null;
     const id = await digest(raw), db = database(), now = Date.now();
     const value = await db.prepare("SELECT owner,csrf,created,touched FROM sessions WHERE id=?").bind(id).first<{
         owner: string;
@@ -70,11 +73,13 @@ export async function session(request: Request, write = false) {
         touched: number;
     }>();
     if (!value || value.owner !== owner || now - value.created >= 28800000 || now - value.touched >= 1800000)
-        throw new HttpError(401, "登入已到期，請重新登入。");
-    if (write && !equal(value.csrf, request.headers.get("X-CSRF-Token") ?? ""))
-        throw new HttpError(403, "登入驗證已更新，請重新整理。");
+        return null;
     await db.prepare("UPDATE sessions SET touched=? WHERE id=?").bind(now, id).run();
-    return { id, owner, csrf: value.csrf, username: record.username! };
+    return { id, csrf: value.csrf };
+}
+export function checkCsrf(request: Request, csrf: string) {
+    if (!equal(csrf, request.headers.get("X-CSRF-Token") ?? ""))
+        throw new HttpError(403, "登入驗證已更新，請重新整理。");
 }
 export async function createSession(request: Request, owner: string) {
     const db = database(), raw = randomToken(), id = await digest(raw), csrf = randomToken(), now = Date.now();
@@ -82,10 +87,5 @@ export async function createSession(request: Request, owner: string) {
         db.prepare("DELETE FROM sessions WHERE created<? OR touched<?").bind(now - 28800000, now - 1800000),
         db.prepare("INSERT INTO sessions (id,owner,csrf,created,touched) VALUES (?,?,?,?,?)").bind(id, owner, csrf, now, now),
     ]);
-    return cookie(request, raw);
-}
-export async function verifyPassword(username: string, password: string, record: Admin | null) {
-    const [salt, expected] = record?.password_hash?.split(":") ?? ["synthetic-unknown-salt", "0".repeat(64)];
-    const actual = await passwordHash(password, salt);
-    return equal(actual, expected) && equal(username, record?.username ?? "");
+    return { csrf, setCookie: cookie(request, raw) };
 }

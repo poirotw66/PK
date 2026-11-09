@@ -1,5 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Scoreboard from "./scoreboard";
+import { preferredQueueDate, queueForDate, taipeiDate } from "../lib/court-queue";
+import type { ScoringRules } from "../lib/scoring";
+import PublicationPreview from "./publication-preview";
+import type { ReviewSnapshot } from "./publication-preview";
+import type { PublicationReview } from "../lib/publication-diff";
 type Match = {
     id: string;
     code: string;
@@ -7,11 +13,16 @@ type Match = {
     side_a: string;
     side_b: string;
     planned_start: string | null;
+    planned_court?: string | null;
     started_at?: string;
     eligible?: boolean;
+    blocked_reason?: string | null;
+    scoring_rules?: ScoringRules;
 };
 type Control = {
     public_url: string | null;
+    dates: string[];
+    publication_review: PublicationReview;
     revision: string;
     sequence: number;
     published_revision: string | null;
@@ -28,23 +39,27 @@ type Control = {
     }[];
 };
 const time = (value: string | null | undefined) => value ? new Date(value).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) : "—";
-export default function LiveControl({ revision, draftCount, api, onChanged }: {
+export default function LiveControl({ mode, revision, draftCount, api, onChanged }: {
+    mode: "live" | "publication";
     revision: string;
     draftCount: number;
     api: <T>(path: string, body?: unknown) => Promise<T>;
     onChanged: () => Promise<void>;
 }) {
     const [data, setData] = useState<Control | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(false), [selected, setSelected] = useState<Record<string, string>>({});
-    const [review, setReview] = useState(false), [action, setAction] = useState<{
+    const [day, setDay] = useState("");
+    useEffect(() => { if (data) setDay(previous => data.dates.includes(previous) ? previous : preferredQueueDate(data.dates)); }, [data]);
+    const [review, setReview] = useState<ReviewSnapshot | null>(null), [action, setAction] = useState<{
         court_id: string;
         match: Match;
         action: "start" | "end" | "cancel";
     } | null>(null), [reason, setReason] = useState("");
+    const [scoring, setScoring] = useState<{court_id:string; court_name:string; match:Match}|null>(null);
     const confirmationRef = useRef<HTMLDivElement>(null);
-    useEffect(() => { if (review || action) {
+    useEffect(() => { if (action) {
         confirmationRef.current?.focus();
         confirmationRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-    } }, [review, action]);
+    } }, [action]);
     const refresh = useCallback(async () => setData(await api<Control>("control")), [api]);
     useEffect(() => { let active = true; const tick = async () => { try {
         const next = await api<Control>("control");
@@ -63,8 +78,10 @@ export default function LiveControl({ revision, draftCount, api, onChanged }: {
             setError((e as Error).message);
     } }; void tick(); const timer = setInterval(tick, 15000); return () => { active = false; clearInterval(timer); }; }, [api, revision]);
     async function run(path: string, body: unknown) { setBusy(true); setError(""); try {
-        setData(await api<Control>(path, body));
-        setReview(false);
+        const next = await api<Control>(path, body);
+        setData(next);
+        if (path === "live" && action?.action === "start") setScoring({court_id:action.court_id,court_name:next.courts.find(c=>c.id===action.court_id)?.name??"",match:action.match});
+        setReview(null);
         setAction(null);
         setReason("");
         await onChanged();
@@ -76,11 +93,20 @@ export default function LiveControl({ revision, draftCount, api, onChanged }: {
     finally {
         setBusy(false);
     } }
-    return <section className="live-control" aria-labelledby="live-control-title"><div className="live-control-heading"><div><p className="eyebrow">COURT CONTROL</p><h2 id="live-control-title">現場場地與公開賽程</h2><p>賽程確認後發布；開賽與結束會同步到參賽者網站。</p></div>{data?.public_url && <a href={data.public_url} target="_blank" rel="noreferrer">查看參賽者頁面 ↗</a>}</div>
+    const reviewStale = !!review && (data?.revision !== review.revision || data?.sequence !== review.sequence);
+    return <section id={mode === "publication" ? "schedule-publication" : undefined} className="live-control" aria-labelledby="live-control-title"><div className="live-control-heading"><div><h2 id="live-control-title">{mode === "live" ? "選擇場地與場次" : "發布給參賽者"}</h2><p>{mode === "live" ? "只列出各場地已安排的比賽，完賽後自動同步成績。" : "調整並儲存後，在這裡預覽變更並發布。"}</p></div>{data?.public_url && <a href={data.public_url} target="_blank" rel="noreferrer">查看參賽者頁面 ↗</a>}</div>
  {error && <p role="alert" className="notice error">{error}</p>}
- {data && <><div className="publication-status"><div><strong>{data.pending ? "已保存・等待同步" : data.has_unpublished ? "有尚未發布的賽程" : data.published_revision ? "公開網站已收到更新" : "尚未發布雲端賽程"}</strong><p>{data.error ?? (data.published_at ? `賽程發布 ${time(data.published_at)} · 最近同步 ${time(data.synced_at)}` : "先發布目前已儲存的賽程，再操作各場地。")}</p>{draftCount > 0 && <p>請先儲存或清空 {draftCount} 場草案。</p>}</div><div>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}<button className="primary" disabled={busy || draftCount > 0 || !data.has_unpublished} onClick={() => setReview(true)}>發布已儲存賽程</button></div></div>
- <div className="live-court-grid">{data.courts.map(court => <article className={"live-court" + (court.current ? " is-playing" : "")} key={court.id}><div className="live-court-top"><h3>{court.name}</h3><span>{court.current ? "比賽中" : "目前未開賽"}</span></div>{court.current ? <><p className="live-division">{court.current.division} · 第 {court.current.code} 場</p><h4>{court.current.side_a}<span>對</span>{court.current.side_b}</h4><p>預定 {time(court.current.planned_start)}<br />實際開賽 {time(court.current.started_at)}</p><button className="primary" disabled={busy || draftCount > 0} onClick={() => setAction({ court_id: court.id, match: court.current!, action: "end" })}>結束這場比賽</button><button disabled={busy || draftCount > 0} onClick={() => setAction({ court_id: court.id, match: court.current!, action: "cancel" })}>撤銷誤按開賽</button></> : <><p>選擇現場準備上場的比賽，不會依時鐘自動開賽。</p><label>待開賽場次<select value={selected[court.id] ?? ""} disabled={busy || !data.published_revision} onChange={e => setSelected({ ...selected, [court.id]: e.target.value })}><option value="">選擇場次</option>{court.queue.map(match => <option key={match.id} value={match.id} disabled={!match.eligible}>{time(match.planned_start)} · {match.division} · {match.side_a} 對 {match.side_b}{!match.eligible ? "（需確認選手或先發布調整）" : ""}</option>)}</select></label><button className="primary" disabled={busy || draftCount > 0 || !court.queue.find(m => m.id === selected[court.id] && m.eligible)} onClick={() => setAction({ court_id: court.id, match: court.queue.find(m => m.id === selected[court.id])!, action: "start" })}>確認選手，開始比賽</button></>}</article>)}</div><p className="footnote">只顯示管理員確認的場上狀態。同步失敗會保留資料，操作台開啟時自動重試。結束比賽不代表已登錄成績。</p></>}
- {review && data && <div ref={confirmationRef} tabIndex={-1} className="live-confirm" role="region" aria-label="發布確認"><h3>發布目前已儲存的賽程？</h3><p>參賽者將看到這一版的時間與場地。尚未儲存的草案不會發布。</p><button disabled={busy} onClick={() => setReview(false)}>返回</button><button className="primary" disabled={busy || draftCount > 0} onClick={() => run("publish", { revision: data.revision, sequence: data.sequence })}>{busy ? "同步中…" : "確認發布"}</button></div>}
- {action && data && <div ref={confirmationRef} tabIndex={-1} className="live-confirm" role="region" aria-label="場地狀態確認"><h3>{action.action === "start" ? "確認雙方已上場" : action.action === "end" ? "確認比賽已結束" : "撤銷誤按開賽"}</h3><p>{action.match.division} · 第 {action.match.code} 場<br />{action.match.side_a} 對 {action.match.side_b}</p>{action.action === "cancel" && <label>撤銷原因<input maxLength={300} value={reason} onChange={e => setReason(e.target.value)}/></label>}<button disabled={busy} onClick={() => { setAction(null); setReason(""); }}>返回</button><button className="primary" disabled={busy || draftCount > 0 || action.action === "cancel" && !reason.trim()} onClick={() => run("live", { revision: data.revision, sequence: data.sequence, court_id: action.court_id, match_id: action.match.id, action: action.action, ...(action.action === "cancel" ? { reason } : {}) })}>{busy ? "同步中…" : "確認並同步"}</button></div>}
+ {data && <>{mode === "publication" ? <div className="publication-status"><div><strong>{data.pending ? "已保存・等待同步" : !data.published_revision ? "首次使用：請先發布賽程以啟用計分" : data.has_unpublished ? "賽程已儲存，選手還看不到這次修改" : "選手頁面已更新"}</strong><p>{data.error ?? (data.published_at ? `賽程發布 ${time(data.published_at)} · 最近同步 ${time(data.synced_at)}` : "可以先選擇場次；開賽前會引導你確認並發布賽程。")}</p>{draftCount > 0 && <p>請先儲存或清空 {draftCount} 場草案。</p>}</div><div>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}<button className="primary" disabled={busy || draftCount > 0 || !data.has_unpublished} onClick={() => {setError("");setAction(null);setReview({...data.publication_review,revision:data.revision,sequence:data.sequence});}}>{!data.has_unpublished ? (data.pending ? "等待同步" : "目前無新變更") : data.publication_review.initial ? "預覽整份賽程 →" : `查看 ${data.publication_review.changes.length} 場變更 →`}</button></div></div> : <div className="live-sync-status" role="status"><strong>{data.pending ? "已保存・等待同步" : "比分與完賽成績自動同步"}</strong>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}{data.has_unpublished && <p>有尚未發布的賽程，請到<a href="/schedule">賽程調整</a>確認並發布。</p>}{data.error && <p>{data.error}</p>}</div>}
+ {mode === "live" && <><nav className="queue-dates" aria-label="待賽日期">{data.dates.map(date => <button key={date} type="button" disabled={busy || !!scoring} aria-pressed={day === date} onClick={() => {setDay(date);setSelected({});setAction(null);}}>{date === taipeiDate() ? "今天 · " : ""}{date.slice(5).replace("-","/")}</button>)}</nav><p className="queue-date-note">{data.dates.includes(taipeiDate()) ? "預設顯示今天，可切換其他比賽日期。" : "今天不是賽事日，可切換比賽日期查看。"}目前查看 {day.replaceAll("-","/")}。</p><div className="live-court-grid">{data.courts.map(court => {const queue = queueForDate(court.queue, day), next = queue.find(match => match.eligible), picked = queue.find(match => match.id === selected[court.id]); return <article className={"live-court" + (court.current ? " is-playing" : "")} key={court.id}><div className="live-court-top"><h3>{court.name}</h3><span>{court.current ? "比賽中" : "目前未開賽"}</span></div>{court.current ? <><p className="live-division">{court.current.division} · 第 {court.current.code} 場</p><h4>{court.current.side_a}<span>對</span>{court.current.side_b}</h4><p>預定 {time(court.current.planned_start)}<br />實際開賽 {time(court.current.started_at)}</p><button className="primary" disabled={busy || draftCount > 0} onClick={() => setScoring({court_id:court.id,court_name:court.name,match:court.current!})}>進入計分模式</button><button disabled={busy || draftCount > 0} onClick={() => setAction({ court_id: court.id, match: court.current!, action: "cancel" })}>撤銷誤按開賽</button></> : <><p>只列出 {day.slice(5).replace("-","/")} 安排在{court.name}的場次。換場地請至賽程調整頁。</p>{next && <div className="next-match"><p>下一場可開賽 · 第 {next.code} 場</p><h4>{next.side_a}<span>對</span>{next.side_b}</h4><p>{time(next.planned_start)} · {next.division}</p><button type="button" disabled={busy || draftCount > 0} onClick={() => {setSelected({...selected,[court.id]:next.id});setAction(null);}}>選擇下一場 →</button></div>}<label>{court.name}當日待賽（{queue.length} 場）<select value={picked?.id ?? ""} disabled={busy || !queue.length} onChange={e => {setSelected({ ...selected, [court.id]: e.target.value });setAction(null);}}><option value="">選擇場次</option>{queue.map(match => <option key={match.id} value={match.id} disabled={!match.eligible}>{time(match.planned_start)} · 第 {match.code} 場 · {match.division} · {match.side_a} 對 {match.side_b}{match.blocked_reason ? `（${match.blocked_reason}）` : ""}</option>)}</select></label>{picked && <p className="picked-match">已選擇第 {picked.code} 場<br /><strong>{picked.side_a} 對 {picked.side_b}</strong></p>}{!data.published_revision && <p>請先到賽程調整頁發布賽程，再開始計分。</p>}{!queue.length && <p>這個日期已無待賽場次，可切換其他日期。</p>}<button className="primary" disabled={busy || draftCount > 0 || !data.published_revision || !picked?.eligible} onClick={() => setAction({ court_id: court.id, match: picked!, action: "start" })}>確認選手，開始計分</button></>}</article>;})}</div><p className="footnote">只顯示管理員確認的場上狀態。同步失敗會保留資料，雲端會定期補送，開啟操作台也會重試。每次得分都會儲存，完賽確認後自動同步成績。</p></>}</>}
+ {review && data && <PublicationPreview key={`${review.revision}:${review.sequence}`} review={review} stale={reviewStale} busy={busy} draftCount={draftCount} error={error} onClose={()=>setReview(null)} onReload={()=>{setError("");setReview({...data.publication_review,revision:data.revision,sequence:data.sequence});}} onPublish={()=>run("publish",{revision:review.revision,sequence:review.sequence})}/>}
+
+ {action && data && <div ref={confirmationRef} tabIndex={-1} className="live-confirm" role="region" aria-label="場地狀態確認"><h3>{action.action === "start" ? "確認雙方已上場" : action.action === "end" ? "確認比賽已結束" : "撤銷誤按開賽"}</h3><p>{action.match.division} · 第 {action.match.code} 場<br />{action.match.side_a} 對 {action.match.side_b}</p>{action.action === "start" && <p>開賽場地：{data.courts.find(c=>c.id===action.court_id)?.name}<br />{(action.match.scoring_rules?.best_of??3)===3?"三局兩勝":"五局三勝"} · 每局 {action.match.scoring_rules?.target??11} 分 · 領先 2 分勝出</p>}{action.action === "cancel" && <label>撤銷原因<input maxLength={300} value={reason} onChange={e => setReason(e.target.value)}/></label>}<button disabled={busy} onClick={() => { setAction(null); setReason(""); }}>返回</button><button className="primary" disabled={busy || draftCount > 0 || action.action === "cancel" && !reason.trim()} onClick={() => {
+     void run("live", { revision: data.revision, sequence: data.sequence, court_id: action.court_id, match_id: action.match.id, action: action.action, ...(action.action === "cancel" ? { reason } : {}) });
+ }}>{busy ? "同步中…" : "確認並同步"}</button></div>}
+ {scoring && <Scoreboard key={scoring.match.id} match={scoring.match} court={scoring.court_name} api={api} onClose={()=>setScoring(null)} onFinish={async(version)=>{
+     const latest=await api<Control>("control");
+     const next=await api<Control>("live",{revision:latest.revision,sequence:latest.sequence,court_id:scoring.court_id,match_id:scoring.match.id,action:"end",score_version:version});
+     setData(next);setScoring(null);await onChanged();
+ }}/>}
  </section>;
 }

@@ -1,7 +1,10 @@
 declare namespace Cloudflare {
   interface Env {
     DB?: D1Database;
-    ADMIN_PEPPER?: string;
+    PRIMARY_ADMIN_EMAIL?: string;
+    ADDITIONAL_ADMIN_EMAIL?: string;
+    ADDITIONAL_ADMIN_EMAILS?: string;
+    SYNC_RETRY_TOKEN_HASH?: string;
     APP_ORIGIN?: string;
     READER_ORIGIN?: string;
     CLOUD_PUBLISH_SECRET?: string;

@@ -12,10 +12,7 @@ test('local full-stack authentication, persistence, conflict review and atomic s
  const signIn=await fetch(origin+'/signin-with-chatgpt?return_to=/',{redirect:'manual'});
  platform=signIn.headers.get('set-cookie').split(';')[0];assert.ok(platform);
  assert.equal((await api('state')).status,401);
- const setup=await api('setup',{username:'synthetic-admin',password:'synthetic-test-password'});
- assert.equal(setup.status,200,JSON.stringify(setup.value));loginCookie=setup.cookie.split(';')[0];
- let status=await api('status');csrf=status.value.csrf;assert.ok(csrf);
- assert.equal((await api('setup',{username:'other-admin',password:'synthetic-test-password'})).status,409);
+ let status=await api('status');assert.equal(status.status,200,JSON.stringify(status.value));loginCookie=status.cookie.split(';')[0];csrf=status.value.csrf;assert.ok(csrf);
  assert.equal((await api('import',fixture(),{noCsrf:true})).status,403);
  assert.equal((await api('import',fixture(),{origin:'https://attacker.example'})).status,403);
  assert.equal((await api('import',fixture())).status,200);
@@ -36,9 +33,7 @@ test('local full-stack authentication, persistence, conflict review and atomic s
  assert.equal((await api('export',{})).status,404);
  assert.equal((await api('logout',{})).status,200);
  assert.equal((await api('state')).status,401);
- const wrong=await api('login',{username:'synthetic-admin',password:'wrong'});assert.equal(wrong.status,401);
- const login=await api('login',{username:'synthetic-admin',password:'synthetic-test-password'});assert.equal(login.status,200);loginCookie=login.cookie.split(';')[0];
- status=await api('status');csrf=status.value.csrf;
+ status=await api('status');assert.equal(status.status,200);loginCookie=status.cookie.split(';')[0];csrf=status.value.csrf;
  assert.equal((await api('state')).value.revision,current.revision);
- console.log('Verified local D1 import, review, concurrent confirmation, history, logout and relogin.');
+ console.log('Verified local D1 import, review, concurrent confirmation, history, logout and session renewal.');
 });

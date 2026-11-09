@@ -5,32 +5,39 @@ The Python solver and PDF exports remain local. This application never calls the
 
 ## Supported flow
 
-1. Open the owner-private Site through the Sites platform sign-in.
-2. Import an exported schedule once and choose an administrator username/password.
+1. Open the administration Site and sign in with an authorized ChatGPT account.
+2. Have the primary administrator import an exported schedule once.
 3. Select a match in the court board, then click a green available position or a
    nearby suggestion. Repeat for other matches; undo supports the last 20 draft
    changes. The list/manual editor remains available.
 4. Enter a reason and review all conflicts and before/after changes.
 5. Confirm the immutable preview. A D1 transaction saves a new revision and history.
 
-The first administrator is bound to the platform identity that initializes the
-private Site. Expanding Site access does not grant another visitor administrator
-rights. The existing platform authentication integration is preserved. There is
-one administrator, with no signup, account sharing, password reset or account
-recovery screen in this version. Keep a unique password in your password manager.
+The primary administrator retains exclusive access to the initial schedule import
+and is bound to the stored Sites user ID. On a new database, configure
+`PRIMARY_ADMIN_EMAIL` before deploying to allow that account to import the first
+schedule and establish the binding. To authorize additional administrators, set a
+comma-separated `ADDITIONAL_ADMIN_EMAILS` list in the Sites runtime before
+deploying. The existing `ADDITIONAL_ADMIN_EMAIL` setting also authorizes its single
+address. The application checks each administrator's current Sites identity on
+every protected request. Removing an address from the runtime settings in a later
+deployment blocks that account's access.
 
-Saved cloud schedule edits must be explicitly published to the spectator Site.
-Court starts and finishes synchronize automatically after the first publication.
-The original local workspace and existing PDFs are separate fixed versions.
-Automatic re-planning and results entry are outside this version.
+Schedule edits require explicit publication to the separate spectator Site. Court
+starts and confirmed match results synchronize automatically through the signed
+publication outbox. They do not modify the original local workspace or old PDF
+exports. Automatic re-planning remains outside this version.
 
 ## Finding space in the schedule
 
-On phones, the board shows one court at a time with court tabs. Match selection
-stays above the timeline; available-position suggestions open in a native modal
-bottom sheet. Choosing a different court's suggestion switches the visible court.
-Search/filters are collapsible, and the compact draft bar opens the reason/review
-sheet on demand. Desktop keeps the multi-court board and side panel.
+On phones, the default schedule is a chronological match-card list for one court.
+Search stays visible above the collapsed advanced filters, and court buttons switch
+the list. Selecting a card opens a native move sheet with date/court filters,
+validated available positions and a separate add-to-draft action. Choosing a slot
+alone never changes the draft. The sheet supports all available times, manual
+editing, player context and swaps. The original timeline and per-match editor
+remain optional views; desktop retains the multi-court board and side panel.
+The compact draft bar opens the existing reason, conflict review and save flow.
 
 The default court board preserves all occupied positions even when division or
 player filters are active; nonmatching matches are muted rather than hidden.
@@ -86,7 +93,7 @@ be split. Unresolved future qualification paths do not reserve player capacity.
 
 Every preview checks the full proposed schedule on the server. Existing conflicts
 must also be repaired before confirmation. Started/completed matches cannot be
-changed. Configuration, identities, results and rules cannot be edited through the
+changed. Configuration, identities and rules cannot be edited through the
 API. No overwrite-import or historical rollback is exposed.
 
 Preview IDs are bound to the session and expire after ten minutes. Confirmation
@@ -101,18 +108,16 @@ and logout are disabled while a draft is pending; navigation warns before leavin
 `db/schema.ts`. Import data is sent through an authenticated private runtime API,
 never a migration, client bundle, source commit or deployment artifact.
 
-Production secrets are configured in Sites: `ADMIN_PEPPER` (secret) and
-`APP_ORIGIN` (the exact HTTPS origin). The pepper is HMAC-applied before PBKDF2
-SHA-512 with a random salt and 100,000 iterations, within Workerd's native limit.
-The salt/hash live in D1; plaintext passwords are never stored or logged. Preserve
-the pepper across releases; replacing it invalidates existing password hashes.
-Never export it into Git or client code.
+Configure `APP_ORIGIN` in Sites with the exact HTTPS origin. The ChatGPT sign-in
+creates a PK session automatically. Existing administrator records preserve the
+primary binding and historical audit names. The application no longer reads
+password hashes or requires `ADMIN_PEPPER`.
 
 Session tokens are random 256-bit values stored only as SHA-256 hashes in D1;
 HTTPS cookies use HttpOnly, Secure, SameSite=Strict and the __Host- prefix. Sessions
 are bound to the platform user and expire after 30 minutes idle or 8 hours total.
 Writes require the exact configured Origin and session CSRF token. Logout revokes
-the session. Login is limited to five attempts per minute per platform user in D1.
+the PK session and then signs out of the Site through the platform.
 
 The hosting platform supplies durable D1 storage. A separate disaster-recovery or
 backup policy has not been configured by this application.
@@ -129,17 +134,20 @@ npm run build
 ```
 
 Apply each generated migration once to the local DB using the starter's documented
-Wrangler local migration command. Local and production data are separate. Configure
-a local-only random `ADMIN_PEPPER` in ignored `.dev.vars`, then `npm run dev` on
-loopback. Portable preview simulates Sites sign-in; this simulation is absent from
+Wrangler local migration command. Local and production data are separate. Set
+`PRIMARY_ADMIN_EMAIL=seedy@sites.test` in ignored `.dev.vars` for an empty local
+database, then run `npm run dev` on loopback. Portable preview simulates Sites sign-in; this simulation is absent from
 production builds. Never put production credentials in local preview files.
 
 Type check with `npx tsc --noEmit`. Bundle the pure rules/schema into ignored
 `outputs/rules.mjs`, `outputs/placements.mjs`, `outputs/navigation.mjs`, `outputs/match-tools.mjs` and `outputs/schema.mjs` using esbuild, then run
 `node --test tests/rules.test.mjs tests/placements.test.mjs tests/navigation.test.mjs tests/match-tools.test.mjs`. `tests/http.test.mjs` targets only the loopback
 preview at port 8770 and expects an empty disposable local D1 database. It verifies
-setup, authorization, import, preview, concurrent saves, history, stale revisions,
-logout and login using explicitly synthetic data. It must never target production.
+authorization, import, preview, concurrent saves, history, stale revisions,
+logout and session renewal using synthetic data. It must never target production.
+After `npm run build`, run `node --test tests/additional-admin-http.test.mjs`
+to verify direct sign-in, access revocation and write protection in an isolated
+local D1 database.
 
 ## Private import
 
@@ -164,6 +172,126 @@ Administrators first publish the saved schedule, then confirm each court's actua
 D1 keeps publication state and a durable outbox. Failed delivery remains pending and retries while the console is open or when it reopens. The public reader polls every ten seconds. After its first successful cloud publication, it rejects legacy local-watcher updates. Deployment alone does not publish or start any match.
 
 Portable unit checks require bundling `lib/publication-model.ts` to `outputs/publication-model.mjs` alongside the existing test bundles. `tests/live-http.test.mjs` is an integration check for the synthetic local D1 fixture and the reader preview seeded with the matching three-match snapshot; it must never target production. The original `tests/http.test.mjs` requires a fresh local database.
+
+## Publication comparison
+
+The publish review compares the saved canonical schedule against the last acknowledged public outbox message. Pending, undelivered messages do not become the comparison baseline. The review shows match identity, additions/removals, and before/after time and court. First publication explicitly has no cloud baseline.
+
+The confirmation captures its revision and publication sequence. Polling never replaces the reviewed content silently; subsequent edits or court updates disable confirmation until the administrator reviews again. The existing server-side revision/sequence checks also reject stale submissions. Drafts remain excluded. Bundle `lib/publication-diff.ts` to `outputs/publication-diff.mjs` to run `tests/publication-diff.test.mjs`.
+
+## Court scorekeeping
+
+Choose a confirmed, scheduled match from any idle court and verify the court and
+both players. Before the first cloud publication, matches remain selectable from
+the saved schedule. The start confirmation guides the operator through reviewing
+and publishing the schedule, preserves the chosen match, and returns to the start
+confirmation. Scoring opens only after the separate explicit start confirmation. Changing the court checks assignment locks and schedule
+conflicts in both the canonical and published schedules. Other unpublished edits
+are not included. The scoring dialog opens automatically and can be resumed from
+the active court card. It does not start matches based on the clock.
+
+Each tap updates the displayed score immediately and is then saved to D1 before
+the next operation. The display is provisional while saving; failed requests are
+reconciled against the server without replaying the tap. If the latest score cannot
+be read, further scoring and completion stay disabled until recovery. Undo removes the last point,
+including reopening a completed game. Games advance automatically; a match stops
+when one side wins the required number of games. The existing tournament uses
+best of three, 11 points, win by two, no cap. New imports carry supported stage
+rules (best of three/five, 11/15 points, win by two, no cap). Reloading the page
+retains the point history; reopen scoring from the active court. Scoring requires
+an online authenticated session and does not queue offline taps.
+
+Score versions reject stale concurrent writes. Final confirmation reads the
+persisted score, validates victory, and atomically checks both the schedule and
+score versions before marking the match completed, freeing the court, and queuing
+the result. Synchronization failures retain the result and show a retry status.
+The public Site displays the winner and each game score after its normal refresh.
+In-progress game scores, game wins and completed games synchronize through the
+small public live-score channel; the raw tap history remains private.
+
+This version supports normal completed matches. Walkovers, retirements, corrections
+of confirmed results, automatic pool rankings and advancement require a subsequent
+workflow. Public standings affected by new results explicitly await adjudication;
+stale points/ranks are hidden rather than presented as current.
+
+## Live score synchronization
+
+The score API acknowledges each point or undo as soon as it is committed to D1.
+Cloudflare `waitUntil` sends the allowlisted summary in the background to
+`/sync/cloud-score` using the existing runtime HMAC secret and a path-bound,
+two-minute signature. Score versions and actual start timestamps prevent stale
+writes and scores from an earlier start from appearing in a new match. D1 stores
+the last acknowledged score version and a retry status. The management console
+retries pending summaries while open, including after leaving the scoring dialog.
+Failures never undo or silently discard saved points.
+
+The participant reader polls the small public score document about every two
+seconds while visible, with reconnect/visibility refresh. The channel also carries
+the current schedule version so starts and finishes trigger a schedule refresh.
+It displays in-progress scores, game wins, game history and explicit pending
+victory confirmation. Confirmed results still use the existing publication outbox.
+No full schedule snapshot is rewritten for individual points.
+
+The scoring dialog loads the saved score before attempting any publisher retry.
+It polls saved state every two seconds, skips polls during writes and discards
+responses that began before a write. A delayed poll cannot overwrite the immediate
+score preview. Publication timeouts never block the next saved point; pending
+summaries remain retryable through the existing D1 acknowledgement metadata.
+
+## Separate operations pages
+
+`/` and `/live` open court selection and scoring. `/schedule` contains the court
+availability board, draft editing, history and publication review. Both direct
+routes retain platform and administrator authentication. Navigating from an
+unsaved schedule draft to scoring is blocked until it is saved or discarded.
+
+Court selectors contain only matches assigned to that court in the published
+schedule; before first publication, they use the canonical schedule. Unpublished
+moves remain blocked on the old court until published. The live mutation also
+rejects cross-court starts: use schedule editing and publication to move a match.
+
+Completed board/list matches use blue with a completion label; in-progress board
+matches use amber. Filtered-out matches retain these status colors. Both remain
+non-editable, and completed matches continue occupying their planned intervals.
+
+## Date-specific queues and unattended delivery
+
+The court page defaults to the current Asia/Taipei event day. Outside event dates,
+it chooses the next event date or the latest past event date and explains the
+fallback. Each court shows only that date's matches and highlights its earliest
+eligible match. Selecting that suggestion still requires the ordinary start
+confirmation. Switching dates clears selections and open start confirmations;
+active matches remain visible regardless of the date filter.
+
+`POST /api/sync-service` is a narrow unattended updater. It accepts no mutation
+payload, browser session or CSRF token. Authorization requires the existing Sites
+service credential, matched against its SHA-256 fingerprint in the secret runtime
+variable `SYNC_RETRY_TOKEN_HASH`. The raw credential stays outside this repository.
+Calls resend the existing durable publication first, then active match score
+summaries. Responses contain counts, publication sequence/version and a timestamp,
+with no player names. Unknown credentials and request bodies are rejected.
+
+The linked Sites cloud task retrieves service access afresh with `get_site` and
+sends that credential only to this Site, in `OAI-Sites-Authorization` and
+`Authorization`. It uses the supported cloud scheduler rather than a local cron
+or an open browser. A rotated service credential requires updating the configured
+fingerprint. The existing immediate delivery and foreground retry remain enabled.
+
+Bundle `lib/court-queue.ts` and `lib/sync-service-auth.ts` to the matching ignored
+`outputs/*.mjs` for their unit tests. `tests/sync-service-http.test.mjs` uses only
+the disposable local admin at 8770 and a fake reader at 8780. It verifies reader
+failure, logout, sessionless recovery, idempotency and unchanged canonical data.
+Never run this integration test against production.
+
+## Mobile move verification
+
+Phone cards preserve completed/in-progress colors and keep locked matches read-only.
+The move sheet reuses `placementOptions` against the complete current draft, so
+filters never remove hidden court occupancy, rest or group constraints. Targets
+are rechecked as the draft changes and require explicit confirmation before they
+enter the draft. Saving still uses the existing full server review. Search results
+open the matched card's move sheet across dates/courts. Viewing or canceling the
+sheet makes no persistent change.
 
 ## Source-only checkout
 

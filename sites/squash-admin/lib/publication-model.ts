@@ -1,3 +1,5 @@
+import { validateResult } from "./scoring";
+import type { ScoringResult } from "./scoring";
 import type { Tournament } from "./schedule/schema";
 export type CourtLive = {
     match_id: string | null;
@@ -29,6 +31,7 @@ export type PublicEnvelope = {
         court_id: string | null;
         planned_start_at: string | null;
         started_at: string | null;
+        result?: ScoringResult;
     }[];
 };
 export function emptyLive(state: Tournament): LiveState {
@@ -40,12 +43,29 @@ export function envelope(payload: PublicationPayload, metadata: Omit<PublicEnvel
             court_id: match.assignment?.court ?? null,
             planned_start_at: match.assignment ? new Date(match.assignment.start * 60000).toISOString() : null,
             started_at: payload.live.starts[match.id] ?? null,
+            ...(match.result ? { result: match.result } : {}),
         })) };
+}
+export function selectableMatches(main: Tournament, published: PublicationPayload | null, courtId?: string) {
+    const schedule = published?.schedule ?? main;
+    const canonical = new Map(main.matches.map(match => [match.id, match]));
+    return schedule.matches.filter(match => match.assignment && (!courtId || match.assignment.court === courtId) && ["planned", "ready"].includes(match.status))
+        .sort((a, b) => a.assignment!.start - b.assignment!.start)
+        .map(match => {
+            const actual = canonical.get(match.id);
+            const blocked_reason = !actual?.assignment ? "尚未安排時間與場地"
+                : actual.players.length !== 2 ? "雙方選手尚未確定"
+                : !["planned", "ready"].includes(actual.status) ? "此場已開打或已結束"
+                : actual.assignment.start !== match.assignment!.start || actual.assignment.court !== match.assignment!.court ? "請先發布這場的賽程調整"
+                : null;
+            return { match, eligible: blocked_reason === null, blocked_reason };
+        });
 }
 export function transitionLive(main: Tournament, published: PublicationPayload, input: {
     action: "start" | "end" | "cancel";
     court_id: string;
     match_id: string;
+    result?: ScoringResult;
 }, now: string) {
     const current = published.live.courts[input.court_id];
     if (!current)
@@ -59,7 +79,7 @@ export function transitionLive(main: Tournament, published: PublicationPayload, 
             throw new Error("此場地已有比賽進行中，請先結束或撤銷開賽。");
         if (!["planned", "ready"].includes(match.status) || !["planned", "ready"].includes(visible.status))
             throw new Error("這場比賽已開打或已結束。");
-        if (!match.assignment || !visible.assignment || match.assignment.court !== input.court_id || visible.assignment.court !== input.court_id
+        if (!match.assignment || !visible.assignment || match.assignment.court !== visible.assignment.court
             || match.assignment.start !== visible.assignment.start)
             throw new Error("這場有未發布的調整，請先發布最新賽程。");
         if (match.players.length !== 2)
@@ -71,6 +91,8 @@ export function transitionLive(main: Tournament, published: PublicationPayload, 
             if (active?.players.some(id => match.players.includes(id)))
                 throw new Error("選手已在其他場地比賽，請先確認現場狀態。");
         }
+        if (match.assignment.court !== input.court_id)
+            throw new Error("這場安排在其他場地，請先到賽程調整更換場地並發布。");
         next.live.courts[input.court_id] = { match_id: match.id, started_at: now, previous_status: match.status as "planned" | "ready" };
         next.live.starts[match.id] = now;
         match.status = "in_progress";
@@ -79,6 +101,10 @@ export function transitionLive(main: Tournament, published: PublicationPayload, 
     else {
         if (current.match_id !== match.id || match.status !== "in_progress")
             throw new Error("場地狀態已改變，請重新整理。");
+        if (input.action === "end" && input.result) {
+            match.result = validateResult(input.result);
+            visible.result = structuredClone(match.result);
+        }
         match.status = input.action === "end" ? "completed" : current.previous_status ?? "planned";
         visible.status = match.status;
         if (input.action === "cancel")
