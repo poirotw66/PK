@@ -45,3 +45,19 @@
 @media(min-width:1101px){.workload-people{max-height:800px;overflow:auto;overscroll-behavior:contain}.workload-people>.panel-head{position:sticky;top:0;background:#fff;z-index:1}}
 @media(max-width:1100px){.workload-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.workload-person{padding:14px}.workload-person-summary,.workload-problems,.workload-daily{padding-left:14px;padding-right:14px}.workload-day-counts{gap:6px}}
 @media(max-width:700px){.workload-columns{display:block}.workload-columns>.panel{margin-bottom:20px}.workload-controls{gap:12px;align-items:stretch}.workload-controls>label{min-width:0;flex:1}.workload-controls>button{font-size:13px;padding:8px;align-self:end}.workload-filters{gap:12px}.workload-filters>label{min-width:0;flex:1}.workload-filters .workload-check{flex-basis:100%;justify-content:flex-end;min-height:44px;margin:0}.workload-stats{gap:16px}.workload-stats strong{font-size:24px}.workload-stats span{font-size:13px}.workload-person{min-height:108px}.workload-people{max-height:420px;overflow:auto;overscroll-behavior:contain}.workload-people>.panel-head{position:sticky;top:0;background:#fff;z-index:1}.workload-controls select{width:100%}.schedule-storage-actions{display:grid;grid-template-columns:1fr 1fr}.schedule-storage-actions button{font-size:13px;padding:8px}}
+
+.format-planner .panel{min-width:0}
+.format-estimate{padding:14px 18px;overflow-wrap:anywhere}
+.format-estimate p{margin-top:5px}
+.format-warning{color:#8b5019}
+.format-fields{border:0;display:grid;gap:14px;margin:0;min-inline-size:0;padding:14px 18px 18px}
+.format-fields>label:first-child{max-width:300px}
+.format-toggle{display:flex;gap:8px;align-items:center;flex-direction:row-reverse;justify-content:flex-end;font-size:14px;min-height:44px}
+.format-toggle input{height:18px;width:18px}
+.format-pool-editor h3{margin-bottom:8px}
+.format-pools{display:grid;gap:8px;margin-bottom:12px;max-width:420px}
+.format-pool{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;align-items:end;gap:8px}
+.format-actions{display:flex;gap:8px;flex-wrap:wrap}
+.format-pool button,.format-actions button{min-height:44px}
+.format-editor .format-estimate{background:var(--ground);border-radius:6px;padding:12px}
+.format-overview button{min-height:44px;white-space:nowrap}

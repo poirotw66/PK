@@ -165,6 +165,7 @@ def create_server(
                     "/schedule-ui.js",
                     "/draft-storage.js",
                     "/workload-ui.js",
+                    "/format-ui.js",
                     "/operator.css",
                 }:
                     data = files("squash_scheduler.assets").joinpath(path[1:]).read_bytes()

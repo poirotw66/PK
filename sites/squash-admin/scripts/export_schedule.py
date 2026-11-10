@@ -13,6 +13,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     sys.path.insert(0, str(args.scheduler / "src"))
+    from squash_scheduler.domain.formats import pending_format_divisions
     from squash_scheduler.domain.rankings import effective_rules
     from squash_scheduler.operations import OperatorService
     from squash_scheduler.scheduling.constraints import (
@@ -23,6 +24,8 @@ def main():
 
     repo = Repository(args.workspace)
     snapshot = repo.load()
+    if pending_format_divisions(snapshot):
+        raise SystemExit("Complete all approved draws before exporting the schedule.")
     context, issues = build_context(snapshot)
     if context is None or issues:
         raise SystemExit("The source scheduling context is invalid.")

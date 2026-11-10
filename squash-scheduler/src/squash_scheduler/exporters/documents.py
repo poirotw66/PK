@@ -986,7 +986,10 @@ def build_documents(
 ) -> dict:
     """A failed bundle stays failed; latest-ready is updated only by release()."""
     from ..domain.encouragement_draws import validate_encouragement
+    from ..domain.formats import pending_format_divisions
 
+    if pending_format_divisions(snapshot):
+        raise ValueError("FORMAT_GRAPH_PENDING: complete approved draws before exporting")
     errors = validate_encouragement(snapshot)
     if errors:
         raise ValueError("; ".join(i.message for i in errors))

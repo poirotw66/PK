@@ -14,12 +14,18 @@ from uuid import UUID
 from .domain.draws import run_draw
 from .domain.encouragement import eligibility_report
 from .domain.encouragement_draws import apply_draw, propose_draw
+from .domain.formats import pending_format_divisions
 from .domain.matches import generate_matches
 from .domain.models import Assignment, Snapshot, canonical_hash, content_hash, new_id, utcnow
 from .domain.rankings import effective_rules, import_results, resolve_side
 from .domain.revisions import approve
 from .domain.seeds import configure_seeds
 from .domain.validation import target_basis, validate
+from .operator_formats import (
+    configure_format,
+    format_state,
+    generate_when_formats_ready,
+)
 from .public_feed import PublicFeed
 from .scheduling import solve_schedule, validate_schedule
 from .storage.repository import Repository, atomic_json
@@ -179,6 +185,7 @@ class OperatorService:
                         .startswith(("round_robin", "pools_"))
                         else (d.format_plan or {}).get("bracket_capacity")
                     ),
+                    "format": format_state(snapshot, d),
                     "seed_rules": {**snapshot.config.get("draw_defaults", {}), **d.draw_overrides},
                     "seed_editable": not any(
                         m.division_id == d.id and m.status in {"in_progress", "completed"}
@@ -270,7 +277,16 @@ class OperatorService:
         ):
             raise ValueError("請填寫操作者與本次異動原因。")
         division_id = operation.get("division_id", "")
-        if action in {
+        if (
+            action in {"schedule", "manual_schedule", "local_replan"}
+            or (action == "live_match" and operation.get("event") in {"call", "start"})
+        ) and pending_format_divisions(snapshot):
+            raise ValueError("有組別尚未依新賽制完成對戰。請先完成抽籤與籤表確認。")
+        if action == "format":
+            working, summary = configure_format(
+                working, division_id, operation["format"], actor, reason
+            )
+        elif action in {
             "live_match",
             "reserve",
             "entry_change",
@@ -312,19 +328,61 @@ class OperatorService:
                 "notice": "本次只建立提案；確認籤表後才會更新對戰。",
             }
         elif action == "approve_draw":
-            draw = next(d for d in working.draws if d["id"] == operation["draw_id"])
-            working, _ = approve(working, "draw:" + draw["id"], target_basis(draw), actor, reason)
-            generate_matches(working)
-            # Previous unstarted assignments with changed opponents need a new solve.
-            affected = {m.id for m in working.matches if m.division_id == draw["division_id"]}
+            selected_draw = next(
+                (d for d in working.draws if d["id"] == operation["draw_id"]), None
+            )
+            if selected_draw is None:
+                raise ValueError("找不到此籤表。")
+            current_draw = next(
+                (
+                    d
+                    for d in reversed(working.draws)
+                    if d.get("division_id") == selected_draw["division_id"]
+                    and d.get("kind") not in {"encouragement", "deferred_slots"}
+                    and d.get("status") != "superseded"
+                ),
+                None,
+            )
+            if current_draw is not selected_draw:
+                raise ValueError("請確認此組最新的主賽籤表。")
+            affected = {
+                m.id for m in working.matches if m.division_id == selected_draw["division_id"]
+            }
+            if (
+                any(
+                    m.id in affected and m.status in {"in_progress", "completed"}
+                    for m in working.matches
+                )
+                or any(r.get("match_id") in affected for r in working.results)
+                or any(
+                    c.get("kind") == "live_match_event" and c.get("match_id") in affected
+                    for c in working.changes
+                )
+            ):
+                raise ValueError("此組已叫號、開打或登錄成績，不能套用新籤表。")
             if any(a.match_id in affected and any(a.locks.values()) for a in working.assignments):
                 raise ValueError("此組有鎖定排程，請先由賽務確認鎖定。")
+            working, _ = approve(
+                working, "draw:" + selected_draw["id"], target_basis(selected_draw), actor, reason
+            )
+            if pending_format_divisions(working):
+                generated = generate_when_formats_ready(working)
+            else:
+                generate_matches(working)
+                generated = True
+            affected.update(
+                m.id for m in working.matches if m.division_id == selected_draw["division_id"]
+            )
             working.assignments = [a for a in working.assignments if a.match_id not in affected]
             summary = {
-                "title": "確認主賽籤表並更新對戰",
-                "division_id": draw["division_id"],
-                "output": draw["output"],
-                "notice": "此組原排程已清除，下一步請重新排程。",
+                "title": "確認主賽籤表並更新對戰" if generated else "確認主賽籤表",
+                "division_id": selected_draw["division_id"],
+                "output": selected_draw["output"],
+                "notice": (
+                    "此組原排程已清除，下一步請重新排程。"
+                    if generated
+                    else "此組籤表已確認，待其他組別籤表確認後會一起產生對戰。"
+                ),
             }
         elif action == "results":
             audit = import_results(
@@ -411,6 +469,7 @@ class OperatorService:
             raise Conflict("賽事已更新，請重新整理後再操作。")
         action = request.get("action")
         allowed = {
+            "format": {"division_id", "format"},
             "seeds": {"division_id", "mode", "seeds"},
             "draw": {"division_id", "seed"},
             "approve_draw": {"draw_id"},
@@ -548,6 +607,8 @@ class OperatorService:
         snapshot = repository.load()
         if snapshot.id != revision_id:
             raise Conflict("賽事已更新，請重新整理。")
+        if pending_format_divisions(snapshot):
+            raise ValueError("有組別尚未依新賽制完成對戰，無法匯出文件。")
         from .domain.encouragement_draws import validate_encouragement
 
         errors = validate_encouragement(snapshot)

@@ -49,7 +49,9 @@ def eligibility_report(snapshot: Snapshot, division_id: str) -> dict:
         registration = registrations[entry.registration_id]
         name = people[registration.participant_id].display_name
         status, reason, source = "ineligible", "DIVISION_NOT_ELIGIBLE", None
-        if division.name in ELIGIBLE_DIVISIONS and division.category == "school":
+        if (division.format_plan or {}).get("encouragement_enabled") is False:
+            reason = "ENCOURAGEMENT_DISABLED"
+        elif division.name in ELIGIBLE_DIVISIONS and division.category == "school":
             status, reason = "pending", "FIRST_ROUND_UNRESOLVED"
             if entry.status != "active":
                 status, reason = "ineligible", "ENTRY_NOT_ACTIVE"

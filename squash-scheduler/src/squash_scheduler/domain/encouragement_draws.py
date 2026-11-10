@@ -49,6 +49,8 @@ def _source(snapshot: Snapshot, division_id: str) -> tuple[dict, str]:
     if division is None or division.name not in ELIGIBLE_DIVISIONS or division.category != "school":
         raise ValueError("ENCOURAGEMENT_DIVISION_INVALID: only junior-high boys/girls qualify")
     plan = division.format_plan or {}
+    if plan.get("encouragement_enabled") is False:
+        raise ValueError("ENCOURAGEMENT_DISABLED: this division does not offer consolation")
     if plan.get("template_id") != "single_elimination":
         raise ValueError(
             "ENCOURAGEMENT_SOURCE_UNSUPPORTED: a reviewed first-round knockout is required"

@@ -32,6 +32,19 @@ def active_entries(snapshot: Snapshot, division_id: str) -> list[str]:
     )
 
 
+def pending_format_divisions(snapshot: Snapshot) -> set[str]:
+    """Operator-confirmed formats still missing a generated match graph."""
+    generated = {match.division_id for match in snapshot.matches}
+    return {
+        d.id
+        for d in snapshot.divisions
+        if "encouragement_enabled" in (d.format_plan or {})
+        and d.status not in {"cancelled", "merged", "exhibition_only"}
+        and d.id not in generated
+        and len(active_entries(snapshot, d.id)) >= 2
+    }
+
+
 def recommend_formats(snapshot: Snapshot) -> dict[str, Any]:
     """Return alternatives; recommendations never select or approve a format."""
     result = {}
@@ -123,6 +136,19 @@ def validate_formats(snapshot: Snapshot) -> list[Issue]:
                         message="The current format requires explicit approval.",
                     )
                 )
+            if "encouragement_enabled" in plan:
+                from .encouragement import ELIGIBLE_DIVISIONS
+
+                encouragement = plan["encouragement_enabled"]
+                if type(encouragement) is not bool or (
+                    encouragement
+                    and (
+                        template != "single_elimination"
+                        or division.name not in ELIGIBLE_DIVISIONS
+                        or division.category != "school"
+                    )
+                ):
+                    errors.append("Encouragement requires an explicit junior-high knockout format.")
             placement = plan.get("placement_matches", [])
             if not isinstance(placement, list):
                 errors.append(
