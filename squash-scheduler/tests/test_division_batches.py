@@ -1,6 +1,6 @@
 """Prefer one division per slot while retaining availability and lock constraints."""
 
-from test_scheduling import assign, fixture, successful
+from test_scheduling import assign, at, fixture, successful
 
 from squash_scheduler.scheduling import solve_schedule, validate_schedule
 
@@ -36,6 +36,48 @@ def test_batch_preference_does_not_override_locked_mixed_slot():
     assert successful(solve_schedule(s, time_limit_seconds=5))
     assert s.assignments == before
     assert not validate_schedule(s)
+
+
+def test_preferred_windows_allow_fallback_without_reducing_player_rest():
+    s = fixture(shared=True, courts=2)
+    s.config["player_workload"] = {"max_matches_per_day": 5, "minimum_rest_minutes": 60}
+    s.config["runtime"]["preferred_schedule_windows"] = [
+        {
+            "division_id": division.id,
+            "stage_type": "elimination",
+            "start_at": at("08:00").isoformat(),
+            "end_at": at("08:45").isoformat(),
+        }
+        for division in s.divisions
+    ]
+    result = solve_schedule(s, time_limit_seconds=5)
+    assert successful(result), result
+    report = result["diagnostics"]["preferred_windows"]
+    first, second = sorted(s.assignments, key=lambda assignment: assignment.start_at)
+    assert first.start_at < at("08:45") <= second.start_at
+    assert (second.start_at - first.play_end_at).total_seconds() >= 3600
+    assert report == {
+        "requested_count": 2,
+        "in_window_count": 1,
+        "outside_match_ids": [second.match_id],
+    }
+    assert not validate_schedule(s)
+
+
+def test_preferred_windows_reject_unknown_dates_in_initial_solve():
+    s = batch_fixture()
+    s.config["runtime"]["preferred_schedule_windows"] = [
+        {
+            "division_id": s.divisions[0].id,
+            "stage_type": "round_robin",
+            "start_at": at("08:00", "2026-11-02").isoformat(),
+            "end_at": at("09:00", "2026-11-02").isoformat(),
+        }
+    ]
+    result = solve_schedule(s, time_limit_seconds=5)
+    assert result["status"] == "MODEL_INVALID"
+    assert "PREFERRED_SCHEDULE_WINDOW_INVALID" in {issue["code"] for issue in result["issues"]}
+    assert not s.assignments
 
 
 def test_same_day_policy_is_enforced_by_solver_and_independent_validator():

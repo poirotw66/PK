@@ -10,7 +10,14 @@ from .domain.models import Assignment, Snapshot, canonical_hash
 from .domain.rankings import resolve_side
 from .domain.validation import validate
 from .exporters.messages import issue_label
-from .scheduling.constraints import effective_timing, validate_schedule
+from .scheduling.constraints import (
+    build_context,
+    effective_timing,
+    minute,
+    timestamp,
+    validate_schedule,
+)
+from .scheduling.preferences import in_preferred_window, preferred_starts
 
 UUID_PATTERN = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", re.IGNORECASE)
 
@@ -246,7 +253,7 @@ def schedule_review(before: Snapshot, after: Snapshot) -> dict:
         for m in after.matches
         if m.status not in {"cancelled", "excluded"}
     ]
-    return {
+    review = {
         "event_name": before.config.get("event", {}).get("name") or "壁球賽事",
         "timezone": str(zone),
         "base_revision_id": before.id,
@@ -267,3 +274,30 @@ def schedule_review(before: Snapshot, after: Snapshot) -> dict:
             "max_matches_per_day": raw_policy.get("max_matches_per_day"),
         },
     }
+    if (after.config.get("runtime") or {}).get("preferred_schedule_windows"):
+        context, errors = build_context(after)
+        if context and not errors:
+            try:
+                windows = preferred_starts(after, context)
+            except ValueError:
+                return review
+            outside = [
+                {
+                    "code": matches[mid].display_code or mid[:8],
+                    "division": divisions[matches[mid].division_id],
+                    "preferred": [
+                        f"{timestamp(start).astimezone(zone):%m/%d %H:%M}–{timestamp(end).astimezone(zone):%H:%M}"
+                        for start, end in windows[mid]
+                    ],
+                    "assigned": point(assignment),
+                }
+                for mid, assignment in sorted(new.items(), key=lambda pair: pair[1].start_at)
+                if mid in windows
+                and not in_preferred_window(minute(assignment.start_at), windows[mid])
+            ]
+            if windows:
+                review["preferred_windows"] = {
+                    "assigned_count": len(new.keys() & windows.keys()),
+                    "outside": outside,
+                }
+    return review

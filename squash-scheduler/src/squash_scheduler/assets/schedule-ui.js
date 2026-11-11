@@ -262,6 +262,18 @@ function renderScheduleReview(review,root,options={}){
   section.append(node('p',`${review.changed_count} 場變更 · 衝突 ${c.before_count} → ${c.after_count}`,'schedule-review-summary'));
   section.append(node('p',`已排除 ${c.resolved.length} 項／新增 ${c.introduced.length} 項／仍存在 ${c.remaining.length} 項`,'muted'));
   if(!review.can_apply)section.append(node('p','草案尚有衝突，無法確認套用。可取消預覽並繼續調整。','notice'));
+  const windows=review.preferred_windows;
+  if(windows){
+    section.append(node('p',`優先時段內 ${windows.assigned_count-windows.outside.length} 場，穿插安排 ${windows.outside.length} 場。`,'muted'));
+    if(windows.outside.length){
+      const details=node('details',null,'schedule-conflicts');
+      details.append(node('summary','查看穿插場次'),node('p','優先時段可調整，場地、選手休息、每日場數及晉級順序仍須通過檢查。','muted'));
+      details.append(table(['場次','組別','優先時段','排定時間'],windows.outside.map(row=>[
+        row.code,row.division,row.preferred.join('、'),`${row.assigned.date} ${row.assigned.time} · ${row.assigned.court}`,
+      ])));
+      section.append(details);
+    }
+  }
   const labels={date:'日期',time:'時間',court:'場地',duration:'預定結束'};
   for(const row of review.changes){
     const card=node('article',null,'schedule-change');card.dataset.matchId=row.match_id;

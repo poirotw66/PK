@@ -144,10 +144,18 @@ class Publication(Model):
     sponsors: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class PreferredScheduleWindow(TimeRange):
+    division_id: ID
+    stage_type: Literal["round_robin", "elimination", "placement"]
+    rounds: list[Annotated[int, Field(gt=0, strict=True)]] | None = None
+
+
 class Runtime(Model):
     keep_round_robin_groups_same_day: bool = Field(default=False, strict=True)
+    keep_elimination_rounds_in_order: bool = Field(default=False, strict=True)
     batch_slot_minutes: int = Field(default=15, gt=0, le=1440, strict=True)
     day_two_priority_division_ids: list[str] = Field(default_factory=list)
+    preferred_schedule_windows: list[PreferredScheduleWindow] = Field(default_factory=list)
     schedule_objective: Literal[
         "preserve_assignments", "compact_groups", "round_robin_first", "round_robin_batches"
     ] = "preserve_assignments"

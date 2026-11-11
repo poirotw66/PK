@@ -7,6 +7,7 @@ The source PDF supplies the visual vocabulary, not draw assignments or court dat
 from __future__ import annotations
 
 import math
+import re
 from datetime import date
 from html import escape
 from pathlib import Path
@@ -16,9 +17,11 @@ from jinja2 import Environment
 
 from .schedule_rows import schedule_display
 
-VERSION = "2.2.0"
+VERSION = "2.3.1"
 MARGIN_MM = 12
 SCHEDULE_WIDTHS = (0.14, 0.10, 0.10, 0.18, 0.24, 0.24)
+CLASSIC_SCHEDULE_WIDTHS = (0.11, 0.18, 0.17, 0.27, 0.27)
+KAI_FONTS = "'DFKai-SB','BiauKaiTC','BiauKai','TournamentAsset',serif"
 
 
 def date_label(value: str) -> str:
@@ -29,13 +32,34 @@ def date_label(value: str) -> str:
     return f"{day.year}年{day.month}月{day.day}日　星期{'一二三四五六日'[day.weekday()]}"
 
 
-def schedule_cells(row: dict) -> list[str]:
+def schedule_cells(row: dict, *, classic: bool = False) -> list[str]:
     row = schedule_display(row)
     stage = {"循環賽": "循環", "淘汰賽": "決賽", "名次賽": "名次賽"}.get(row["stage"], row["stage"])
     if row["kind"] == "季殿／名次賽" and row.get("stage_type") != "placement":
         stage = "季殿／名次賽"
     elif row["kind"] == "表演賽":
         stage = "表演賽"
+    if classic:
+        division = row["division"]
+        for school in ("高中", "國中", "國小"):
+            if division in {f"{school}男子組", f"{school}女子組"}:
+                division = school + division[2]
+                break
+        hour, _, minute = row["time"].partition(":")
+        time = f"{int(hour)}點　{minute}分" if hour.isdigit() and minute.isdigit() else row["time"]
+        if row.get("round_label"):
+            stage = row["round_label"]
+        elif stage == "循環":
+            stage = ""
+        if row["kind"] == "季殿／名次賽" and row.get("stage_type") != "placement":
+            stage = "季殿"
+        return [
+            row["code"],
+            time,
+            division + stage,
+            print_text(row["side_a"]),
+            print_text(row["side_b"]),
+        ]
     return [
         f"[{row['code']}]",
         row["time"],
@@ -63,6 +87,10 @@ def _wrap(value: str, limit: int = 22) -> list[str]:
         current += char
         length += size
     return [*lines, current]
+
+
+def _short_cjk_name(label: str) -> bool:
+    return 2 <= len(label) <= 3 and all("\u3400" <= char <= "\u9fff" for char in label)
 
 
 def _text(
@@ -102,7 +130,9 @@ def _svg(elements: list[str], title: str) -> str:
     )
 
 
-def _round_robin_records(pools: list[dict], matches: list[dict], title: str) -> str:
+def _round_robin_records(
+    pools: list[dict], matches: list[dict], title: str, *, classic: bool = False
+) -> str:
     """Legible scoring matrix and numbered pair list when edge labels cannot fit."""
     elements = []
     panel = 1000 / len(pools)
@@ -117,11 +147,12 @@ def _round_robin_records(pools: list[dict], matches: list[dict], title: str) -> 
             elements.append(
                 _text(x, 52 + (i // 2) * 22, f"{i + 1} {entry['label']}", 14, "start", 30)
             )
-        widths = [40, *([42] * n), 31, 31, 31, 31]
+        summaries = ["積分"] if classic else ["勝", "敗", "積分", "名次"]
+        widths = [40, *([42] * n), *([31] * len(summaries))]
         x0, y0 = center - sum(widths) / 2, 112
         for i in range(n + 1):
             x = x0
-            headings = ["選手", *map(str, range(1, n + 1)), "勝", "敗", "積分", "名次"]
+            headings = ["選手", *map(str, range(1, n + 1)), *summaries]
             for j, width in enumerate(widths):
                 elements.append(
                     f'<rect x="{x:.2f}" y="{y0 + i * 28}" width="{width}" '
@@ -131,7 +162,7 @@ def _round_robin_records(pools: list[dict], matches: list[dict], title: str) -> 
                 if value:
                     elements.append(_text(x + width / 2, y0 + i * 28 + 18, value, 13))
                 x += width
-        if n == 5:
+        if n == 5 and not classic:
             elements.append(
                 _text(center, y0 + (n + 1) * 28 + 22, "勝:2分 敗:1分 棄:0分", 16, limit=50)
             )
@@ -166,7 +197,13 @@ def _round_robin_records(pools: list[dict], matches: list[dict], title: str) -> 
 
 
 def _round_robin(
-    pools: list[dict], matches: list[dict], title: str, unlabelled_edges: list[dict] | None = None
+    pools: list[dict],
+    matches: list[dict],
+    title: str,
+    unlabelled_edges: list[dict] | None = None,
+    *,
+    classic: bool = False,
+    scoring_legend: str = "",
 ) -> str:
     count = len(pools)
     if not 1 <= count <= 3:
@@ -188,6 +225,7 @@ def _round_robin(
     for pool, (cx, cy) in zip(pools, centers, strict=True):
         entries = pool["entries"]
         n = len(entries)
+        named_matrix = classic and count == 1 and all(_short_cjk_name(e["label"]) for e in entries)
         if not 2 <= n <= 6:
             raise ValueError("PDF_LAYOUT_OVERFLOW: reference pools require 2–6 entries")
         radius = 200 if count == 1 else 90
@@ -228,7 +266,7 @@ def _round_robin(
             label_limit = 12
             if count == 1:
                 size = 20
-                label = f"{entry_index} {label}"
+                label = label if named_matrix else f"{entry_index} {label}"
                 # Side labels grow away from the polygon, keeping the region around
                 # upper edges and their match numbers clear. Right labels wrap before
                 # the scoring table; full names remain together in the SVG text node.
@@ -273,7 +311,7 @@ def _round_robin(
                     raise ValueError(
                         "PDF_LAYOUT_OVERFLOW: scoring-only fallback cannot preserve unlabelled source edges"
                     )
-                return _round_robin_records(pools, matches, title)
+                return _round_robin_records(pools, matches, title, classic=classic)
             _, x, y, box = min(choices, key=lambda choice: choice[0])
             occupied.append(box)
             elements.append(
@@ -288,47 +326,56 @@ def _round_robin(
             f"{n}取{pool['advancement_count']}進決賽" if pool.get("advancement_count") else "循環賽"
         )
         if pool.get("label"):
-            heading = str(pool["label"]) + "池 · " + heading
+            separator = "　" if classic else " · "
+            heading = str(pool["label"]) + "池" + separator + heading
         if count > 1:
             elements.append(_text(cx, 30, heading, 21))
         elif pool.get("advancement_count"):
             elements.append(_text(785, 245, heading, 21, limit=32))
-        # Every pool gets the complete blank scoring record, including summaries.
         cell, row_height, name_width = 32, 27, 84
-        table_width = name_width + (n + 4) * cell
+        summaries = ["積分"] if classic else ["勝", "敗", "積分", "名次"]
+        table_width = name_width + (n + len(summaries)) * cell
         table_center = 785 if count == 1 else cx
         x0, y0 = table_center - table_width / 2, (340 if n <= 5 else 310) if count == 1 else 320
-        elements.append(_text(table_center, y0 - 13, "積分紀錄", 18))
-        headers = ["選手", *[str(i + 1) for i in range(n)], "勝", "敗", "積分", "名次"]
+        legend = scoring_legend if classic else "積分紀錄"
+        if legend:
+            elements.append(_text(table_center, y0 - 13, legend, 16 if classic else 18, limit=36))
+        opponents = (
+            [e["label"] for e in entries] if named_matrix else [str(i + 1) for i in range(n)]
+        )
+        headers = ["" if classic else "選手", *opponents, *summaries]
+        header_height = 53 if named_matrix else row_height
         for i in range(n + 1):
             label = entries[i - 1]["label"] if i else ""
             label_units = sum(2 if ord(c) > 255 else 1 for c in label)
-            values = headers if i == 0 else [f"{i} {label}" if label_units <= 8 else str(i)]
+            row_label = f"{i} {label}" if label_units <= 8 else str(i)
+            values = headers if i == 0 else [label if named_matrix else row_label]
+            row_y = y0 if i == 0 else y0 + header_height + (i - 1) * row_height
             x = x0
-            for j in range(n + 5):
+            for j in range(len(headers)):
                 column_width = name_width if j == 0 else cell
                 elements.append(
-                    f'<rect x="{x:.2f}" y="{y0 + i * row_height:.2f}" '
-                    f'width="{column_width}" height="{row_height}" data-text-padding="1.5"/>'
+                    f'<rect x="{x:.2f}" y="{row_y:.2f}" '
+                    f'width="{column_width}" height="{header_height if i == 0 else row_height}" data-text-padding="1.5"/>'
                 )
-                if j < len(values):
+                if j < len(values) and values[j]:
                     elements.append(
                         _text(
                             x + column_width / 2,
-                            y0 + i * row_height + 18,
+                            row_y + (15 if i == 0 and named_matrix else 18),
                             values[j],
                             13,
-                            limit=12,
+                            limit=2 if i == 0 and named_matrix else 12,
                         )
                     )
                 if i > 0 and j == i:
                     elements.append(
-                        f'<line x1="{x:.2f}" y1="{y0 + i * row_height}" '
-                        f'x2="{x + column_width:.2f}" y2="{y0 + (i + 1) * row_height}" '
+                        f'<line x1="{x:.2f}" y1="{row_y}" '
+                        f'x2="{x + column_width:.2f}" y2="{row_y + row_height}" '
                         'stroke="black"/>'
                     )
                 x += column_width
-        if n == 5:
+        if n == 5 and not classic:
             elements.append(
                 _text(
                     table_center,
@@ -341,7 +388,9 @@ def _round_robin(
     return _svg(elements, title)
 
 
-def _knockout(rows: list[dict], title: str, *, placement: bool = False) -> str:
+def _knockout(
+    rows: list[dict], title: str, *, placement: bool = False, classic: bool = False
+) -> str:
     # In a placement stage the match kind describes the whole competition, not
     # a detached bronze playoff. Only typed winner references form tree edges.
     main = {r["match_id"]: r for r in rows if placement or r["kind"] != "季殿／名次賽"}
@@ -388,7 +437,10 @@ def _knockout(rows: list[dict], title: str, *, placement: bool = False) -> str:
             "PDF_LAYOUT_OVERFLOW: reference bracket supports at most 16 entrants per stage"
         )
     depth = max((value[1] for value in positions.values()), default=1)
-    if len(leaves) > 8:
+    vertical_names = (
+        classic and len(leaves) > 8 and all(_short_cjk_name(label) for _, label in leaves)
+    )
+    if len(leaves) > 8 and not vertical_names:
         # Sixteen names cannot share the bottom edge at a readable font size.
         # Turn the tree sideways, preserving the same typed match connections.
         leaf_gap, x0, step = 27, 210, 650 / max(depth, 1)
@@ -437,7 +489,9 @@ def _knockout(rows: list[dict], title: str, *, placement: bool = False) -> str:
             ]
         )
     for i, (_, label) in enumerate(leaves):
-        elements.append(_text(left + i * gap, bottom + 30, label, 20, limit=10))
+        elements.append(
+            _text(left + i * gap, bottom + 30, label, 20, limit=2 if vertical_names else 10)
+        )
     for i, row in enumerate(placements):
         placement_sources = {row[key + "_ref"].get("match_id") for key in ("side_a", "side_b")}
         root_sources = (
@@ -461,9 +515,17 @@ def _knockout(rows: list[dict], title: str, *, placement: bool = False) -> str:
             a = positions[root["side_a_ref"]["match_id"]]
             b = positions[root["side_b_ref"]["match_id"]]
             y = bottom - positions[root["match_id"]][1] * step + 35
-            elements.append(_line(left + a[0] * gap, y, left + b[0] * gap, y))
+            line = _line(left + a[0] * gap, y, left + b[0] * gap, y)
             elements.append(
-                _text(left + (a[0] + b[0]) / 2 * gap, y + 20, row["code"] + " 季殿", 16)
+                line.replace("<path ", '<path class="bronze-connector" ', 1) if classic else line
+            )
+            elements.append(
+                _text(
+                    left + (a[0] + b[0]) / 2 * gap,
+                    y + 20,
+                    row["code"] if classic else row["code"] + " 季殿",
+                    16,
+                )
             )
             continue
         elements.append(
@@ -535,10 +597,11 @@ def _validated_unlabelled_edges(model: dict) -> dict[str, list[dict]]:
     return grouped
 
 
-def graph_pages(model: dict, directory: Path) -> list[dict]:
+def graph_pages(model: dict, directory: Path, *, classic: bool = False) -> list[dict]:
     pages: list[dict[str, Any]] = []
     source_edges = _validated_unlabelled_edges(model)
     stages = model.get("stages", [])
+    pool_labels = {pool["id"]: pool["label"] for pool in model.get("pools", []) if "id" in pool}
     division_ids = [d["id"] for d in model.get("divisions", [])]
     division_ids.extend(s["division_id"] for s in stages if s["division_id"] not in division_ids)
     order = {division_id: i for i, division_id in enumerate(dict.fromkeys(division_ids))}
@@ -561,15 +624,22 @@ def graph_pages(model: dict, directory: Path) -> list[dict]:
             name = "循環賽" if stage["type"] == "round_robin" else "對戰圖"
         if name == "淘汰賽":
             name = "決賽"
+            if classic and any(row["kind"] == "季殿／名次賽" for row in rows):
+                has_pools = any(
+                    s["division_id"] == stage["division_id"] and s["type"] == "round_robin"
+                    for s in stages
+                )
+                name = "決賽（一至四名）" if has_pools else "一至四名"
         elif name == "循環賽" and any(
             s["division_id"] == stage["division_id"] and s["order"] > stage["order"] for s in stages
         ):
             name = "預賽"
-        title = division + "　" + name
+        title = division if classic and name == "循環賽" else division + "　" + name
         metadata = {
             "division_id": stage["division_id"],
             "stage_id": stage["id"],
             "source_page": stage.get("source_page"),
+            "stage_type": stage["type"],
         }
         references: list[tuple[str, str]] = []
 
@@ -598,6 +668,18 @@ def graph_pages(model: dict, directory: Path) -> list[dict]:
                 notes.append("最早執行時間：" + str(procedure["earliest_at"]))
             notes.append("抽籤紀錄狀態：" + str(draw.get("status", "待確認")))
         if stage["type"] == "round_robin":
+            scope = f"{division} · {rows[0]['stage']}"
+            scoring_lines = {
+                line.removeprefix("積分：")
+                for rule in model.get("rule_summaries", [])
+                if scope in rule.get("scopes", [rule["title"]])
+                for line in rule["lines"]
+                if line.startswith("積分：")
+            }
+            scoring_legend = next(iter(scoring_lines)) if len(scoring_lines) == 1 else ""
+            points = re.fullmatch(r"勝 (-?\d+)、敗 (-?\d+)、棄 (-?\d+)", scoring_legend)
+            if points:
+                scoring_legend = "勝:{}分　敗:{}分　棄:{}分".format(*points.groups())
             pools = [p for p in model["pools"] if p["stage_id"] == stage["id"]]
             if not pools:
                 entries = {}
@@ -652,11 +734,18 @@ def graph_pages(model: dict, directory: Path) -> list[dict]:
                     {
                         **metadata,
                         "title": panel_title,
-                        "svg": _round_robin(group, rows, panel_title, unlabelled),
+                        "svg": _round_robin(
+                            group,
+                            rows,
+                            panel_title,
+                            unlabelled,
+                            classic=classic,
+                            scoring_legend=scoring_legend,
+                        ),
                         "notes": list(notes)
                         + (
                             ["姓名前數字僅供積分表對照，不代表種子、抽籤位置或名次。"]
-                            if len(group) == 1
+                            if len(group) == 1 and not classic
                             else []
                         )
                         + (["原稿有未編號連線，未建立正式場次"] if unlabelled else []),
@@ -665,15 +754,25 @@ def graph_pages(model: dict, directory: Path) -> list[dict]:
                     }
                 )
         else:
+
+            def leaf_label(row, side):
+                ref = row[side + "_ref"]
+                pool = pool_labels.get(ref.get("pool_id"), "")
+                if classic and ref["type"] == "pool_rank" and re.fullmatch(r"[A-Z]", pool):
+                    return f"{pool}{ref['rank']}"
+                return short(row[side], 12)
+
             printed = [
-                {**r, "side_a": short(r["side_a"], 12), "side_b": short(r["side_b"], 12)}
+                {**r, "side_a": leaf_label(r, "side_a"), "side_b": leaf_label(r, "side_b")}
                 for r in rows
             ]
             pages.append(
                 {
                     **metadata,
                     "title": title,
-                    "svg": _knockout(printed, title, placement=stage["type"] == "placement"),
+                    "svg": _knockout(
+                        printed, title, placement=stage["type"] == "placement", classic=classic
+                    ),
                     "notes": notes,
                     "match_ids": [r["match_id"] for r in rows],
                 }
@@ -724,26 +823,27 @@ def graph_pages(model: dict, directory: Path) -> list[dict]:
     return pages
 
 
-def schedule_pages(model: dict) -> list[dict]:
+def schedule_pages(model: dict, *, classic: bool = False) -> list[dict]:
     pages = []
     dates = list(dict.fromkeys(row["date"] for row in model["matches"]))
     for day in dates:
         rows = [row for row in model["matches"] if row["date"] == day]
+        max_rows = math.ceil(len(rows) / math.ceil(len(rows) / 34)) if classic else 26
         chunk: list[dict] = []
         units = 0
         for row in rows:
             # Reserve height for every wrapped line; never shrink fonts to fit.
-            widths = (12, 10, 10, 16, 23, 23)
+            widths = (9, 16, 14, 24, 24) if classic else (12, 10, 10, 16, 23, 23)
+            cells = schedule_cells(row, classic=classic)
             height = max(
-                len(_wrap(value, width))
-                for value, width in zip(schedule_cells(row), widths, strict=True)
+                len(_wrap(value, width)) for value, width in zip(cells, widths, strict=True)
             )
             if height > 12:
                 raise ValueError("PDF_LAYOUT_OVERFLOW: reference schedule cell is too tall")
-            if chunk and (units + height > 38 or len(chunk) >= 26):
+            if chunk and (units + height > 38 or len(chunk) >= max_rows):
                 pages.append({"date": day, "title": date_label(day), "rows": chunk})
                 chunk, units = [], 0
-            chunk.append({"cells": schedule_cells(row), "match_id": row["match_id"]})
+            chunk.append({"cells": cells, "match_id": row["match_id"]})
             units += height
         if chunk:
             pages.append({"date": day, "title": date_label(day), "rows": chunk})
@@ -788,7 +888,16 @@ th{background:#d9d9d9;font-weight:normal}td{min-height:6mm}thead{display:table-h
 .qr{width:115mm;height:115mm;margin-top:10mm}.sponsor-asset{max-width:150mm;max-height:50mm}
 .notice-sheet p{font-size:14pt;overflow-wrap:anywhere}
 {{ font_css | safe }}
+.classic .graph-sheet h1,.classic .graph svg text,.classic .schedule-sheet{font-family:{{ kai_fonts | safe }} !important}
+.classic .graph-sheet h1{font-weight:700}
+.classic .graph-elimination svg path,.classic .graph-placement svg path{stroke-width:4}
+.classic .graph svg path.bronze-connector{stroke-width:1;stroke-dasharray:2 2}
+.classic .schedule{width:calc(100% - 1mm);border-collapse:separate;border-spacing:0;border:0.6pt solid #000}
+.classic .schedule td,.classic .schedule th{border:0;border-right:0.6pt solid #000;border-bottom:0.6pt solid #000;padding:0.9mm 0.8mm;font-size:11.5pt}
+.classic .schedule tr>:last-child{border-right:0}.classic .schedule tbody tr:last-child td{border-bottom:0}
+.classic .schedule-date{margin-bottom:2.5mm}
 </style>
+<body{% if classic %} class="classic"{% endif %}>
 {% if front_matter %}
 <section class="sheet front-sheet cover" id="cover"><h1>{{ name }}</h1><div class="subtitle">{{ '競賽簡章暨秩序冊' if publication.document_profile == 'prospectus' else '比賽秩序冊' }}</div>
 <p>{% for day in event_dates %}{{ day }}{% if not loop.last %} ～ {% endif %}{% endfor %}</p><p>{{ venue }}</p>
@@ -819,13 +928,13 @@ th{background:#d9d9d9;font-weight:normal}td{min-height:6mm}thead{display:table-h
 <div class="rule-lines">{% for line in rule.lines %}<p>{{ line }}</p>{% endfor %}</div></div>{% endfor %}</section>
 {% endif %}
 {% for graph in graphs %}<section class="sheet graph-sheet" id="graph-{{ loop.index }}"><h1>{{ graph.title }}</h1>
-<div class="graph">{{ graph.svg | safe }}</div>
+<div class="graph graph-{{ graph.stage_type }}">{{ graph.svg | safe }}</div>
 {% for note in graph.notes | default([]) %}<p class="graph-notes">{{ note }}</p>{% endfor %}
-{% if draft %}<p class="stamp">DRAFT 草案 · {{ publication.draft_note or name }} · 尚未核准</p>{% endif %}</section>{% endfor %}
+{% if draft %}<p class="stamp">{% if classic %}審閱草案 · 尚未核准{% else %}DRAFT 草案 · {{ publication.draft_note or name }} · 尚未核准{% endif %}</p>{% endif %}</section>{% endfor %}
 {% for sheet in schedule_pages %}<section class="sheet schedule-sheet" id="schedule-{{ sheet.date }}-{{ loop.index }}"><h1 class="date">{{ sheet.title }}</h1>
-<p class="schedule-date">{{ name }} · {{ sheet.date }}{% if draft %} · DRAFT 草案{% endif %}</p>
+<p class="schedule-date">{% if classic %}預計時間僅供參考，請以場次為主。比賽開始後以參賽者網頁為準。{% if draft %}（審閱草案）{% endif %}{% else %}{{ name }} · {{ sheet.date }}{% if draft %} · DRAFT 草案{% endif %}{% endif %}</p>
 <table class="schedule"><colgroup>{% for width in schedule_widths %}<col style="width:{{ width }}%">{% endfor %}</colgroup>
-<thead><tr><th>場次</th><th>預計時間</th><th>球場</th><th>組別</th><th colspan="2">選手</th></tr></thead>
+<thead><tr><th>場次</th><th>預計時間</th>{% if not classic %}<th>球場</th>{% endif %}<th>組別</th><th colspan="2">選手</th></tr></thead>
 <tbody>{% for row in sheet.rows %}<tr data-match-id="{{ row.match_id }}">{% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></section>{% endfor %}
 {% if qr_data or sponsors %}<section class="sheet notice-sheet" id="notices"><h1>{{ name }}場次通知</h1>
 {% if qr_data %}<p>{{ publication.qr_label }}</p><img class="qr" src="{{ qr_data }}" alt="通知網址 QR Code"><p>{{ publication.qr_url }}</p>{% endif %}
@@ -840,8 +949,14 @@ th{background:#d9d9d9;font-weight:normal}td{min-height:6mm}thead{display:table-h
 
 
 def render(context: dict, *, font_css: str = "") -> str:
+    widths = CLASSIC_SCHEDULE_WIDTHS if context.get("classic") else SCHEDULE_WIDTHS
     return (
         Environment(autoescape=True)
         .from_string(TEMPLATE)
-        .render(**context, font_css=font_css, schedule_widths=[w * 100 for w in SCHEDULE_WIDTHS])
+        .render(
+            **context,
+            font_css=font_css,
+            kai_fonts=KAI_FONTS,
+            schedule_widths=[w * 100 for w in widths],
+        )
     )

@@ -124,6 +124,11 @@ def view_model(snapshot: Snapshot, *, draft: bool = True) -> dict[str, Any]:
         if name not in names:
             names.append(name)
     stages = {s.id: s for s in snapshot.stages}
+    elimination_stages = {stage.id for stage in snapshot.stages if stage.type == "elimination"}
+    final_rounds: dict[str, int] = {}
+    for match in snapshot.matches:
+        if match.kind == "competitive" and match.stage_id in elimination_stages:
+            final_rounds[match.stage_id] = max(match.round, final_rounds.get(match.stage_id, 0))
     side_adapter: TypeAdapter[Any] = TypeAdapter(cast(Any, MatchSide))
     courts = {c["id"]: c for c in snapshot.config.get("courts", [])}
     assignments = {a.match_id: a for a in snapshot.assignments}
@@ -131,6 +136,12 @@ def view_model(snapshot: Snapshot, *, draft: bool = True) -> dict[str, Any]:
     for match in snapshot.matches:
         if match.status in ("cancelled", "excluded"):
             continue
+        round_label = None
+        if match.kind == "competitive" and match.stage_id in final_rounds:
+            round_label = {0: "冠亞", 1: "四強", 2: "八強"}.get(
+                final_rounds[match.stage_id] - match.round,
+                "首輪" if match.round == 1 else f"第{match.round}輪",
+            )
         assignment = assignments.get(match.id)
         local = assignment.start_at.astimezone(tz) if assignment else None
         matches.append(
@@ -159,6 +170,7 @@ def view_model(snapshot: Snapshot, *, draft: bool = True) -> dict[str, Any]:
                 "court": courts[assignment.court_id]["label"] if assignment else "待排程",
                 "court_order": courts[assignment.court_id]["sort_order"] if assignment else 0,
                 "round": match.round,
+                **({"round_label": round_label} if round_label else {}),
                 "position": match.bracket_position,
                 "sources": [
                     s.match_id
@@ -536,6 +548,7 @@ def render_html(model: dict, directory: Path, *, asset_root: Path | None = None)
             raise ValueError("Formal booklet contains unresolved public match rules")
     template_id = publication.get("layout_template_id")
     reference = template_id in {"reference-v1", "reference-v2"}
+    classic = template_id == "reference-v2"
     if template_id not in {None, "draft-v1", "standard-v1", "reference-v1", "reference-v2"}:
         raise ValueError("Unknown publication layout_template_id")
     if not model["draft"] and template_id not in {"standard-v1", "reference-v1", "reference-v2"}:
@@ -556,7 +569,7 @@ def render_html(model: dict, directory: Path, *, asset_root: Path | None = None)
     if reference:
         from .reference_layout import graph_pages
 
-        graphs = graph_pages(model, directory)
+        graphs = graph_pages(model, directory, classic=classic)
         stage_ids = []
     for index, stage_id in enumerate(stage_ids, 1):
         rows = [m for m in model["matches"] if m["stage_id"] == stage_id]
@@ -649,7 +662,8 @@ def render_html(model: dict, directory: Path, *, asset_root: Path | None = None)
     if reference:
         from .reference_layout import VERSION, render, schedule_pages
 
-        context["schedule_pages"] = schedule_pages(model)
+        context["schedule_pages"] = schedule_pages(model, classic=classic)
+        context["classic"] = classic
         context["front_matter"] = template_id == "reference-v2"
         context["unplayed_divisions"] = [
             {
@@ -800,6 +814,7 @@ def document_qa(model: dict, directory: Path) -> dict:
 
     graph_coverage = None
     reference = model["publication"].get("layout_template_id") in {"reference-v1", "reference-v2"}
+    classic = model["publication"].get("layout_template_id") == "reference-v2"
     if reference:
         from collections import Counter
 
@@ -849,21 +864,34 @@ def document_qa(model: dict, directory: Path) -> dict:
     text = "".join(doc.load_page(i).get_text() for i in range(doc.page_count))
     normalized = "".join(text.split())
     if reference:
-        from .reference_layout import MARGIN_MM, SCHEDULE_WIDTHS, print_text, schedule_cells
+        from .reference_layout import (
+            CLASSIC_SCHEDULE_WIDTHS,
+            MARGIN_MM,
+            SCHEDULE_WIDTHS,
+            date_label,
+            print_text,
+            schedule_cells,
+        )
     for summary in model.get("rule_summaries", []):
         for rule_line in summary["lines"]:
             if "".join(rule_line.split()) not in normalized:
                 raise ValueError("RELEASE_ARTIFACT_MISMATCH: PDF omits an effective match rule")
-    for row in map(schedule_display, model["matches"]):
-        for key in ("code", "date", "time", "court", "division", "side_a", "side_b"):
-            value = print_text(str(row[key])) if reference else str(row[key])
-            if "".join(value.split()) not in normalized:
-                raise ValueError(f"RELEASE_ARTIFACT_MISMATCH: PDF omits {row['match_id']} {key}")
+    if not classic:
+        for row in map(schedule_display, model["matches"]):
+            for key in ("code", "date", "time", "court", "division", "side_a", "side_b"):
+                value = print_text(str(row[key])) if reference else str(row[key])
+                if "".join(value.split()) not in normalized:
+                    raise ValueError(
+                        f"RELEASE_ARTIFACT_MISMATCH: PDF omits {row['match_id']} {key}"
+                    )
     if "\ufffd" in text or "\x00" in text:
         raise ValueError("PDF_LAYOUT_OVERFLOW: PDF contains a missing-glyph replacement")
     # Verify visible schedule cells per row. A token appearing elsewhere on a page
     # cannot establish that the correct time/court/opponents belong to this match.
-    expected_rows = {f"[{row['code']}]": row for row in map(schedule_display, model["matches"])}
+    expected_rows = {
+        row["code"] if classic else f"[{row['code']}]": row
+        for row in map(schedule_display, model["matches"])
+    }
     if len(expected_rows) != len(model["matches"]):
         raise ValueError("RELEASE_ARTIFACT_MISMATCH: duplicate display codes")
     found_rows: set[str] = set()
@@ -874,18 +902,48 @@ def document_qa(model: dict, directory: Path) -> dict:
 
     for page_index in range(doc.page_count):
         page = doc.load_page(page_index)
-        widths = SCHEDULE_WIDTHS if reference else (0.2,) * 5
+        widths = (
+            CLASSIC_SCHEDULE_WIDTHS if classic else SCHEDULE_WIDTHS if reference else (0.2,) * 5
+        )
         boundaries = [margin]
         for width in widths:
             boundaries.append(boundaries[-1] + (page.rect.width - 2 * margin) * width)
         anchors: list[tuple[Any, str]] = []
-        for marker in expected_rows:
-            anchors.extend(
-                (bbox, marker)
-                for bbox in page.search_for(marker)
-                if margin <= bbox.x0 < boundaries[1]
+        if classic:
+            headers = [box for box in page.search_for("場次") if margin <= box.x0 < boundaries[1]]
+            time_headers = page.search_for("預計時間")
+            header = next(
+                (
+                    box
+                    for box in headers
+                    if any(
+                        abs(time_box.y0 - box.y0) < 2
+                        and boundaries[1] <= time_box.x0 < boundaries[2]
+                        for time_box in time_headers
+                    )
+                ),
+                None,
             )
+            if header is None:
+                continue
+            code_column = pymupdf.Rect(margin, header.y1, boundaries[1], page.rect.height - margin)
+            for block in page.get_text("dict", clip=code_column)["blocks"]:
+                for line in block.get("lines", []):
+                    marker = "".join(span["text"] for span in line["spans"]).strip()
+                    if marker not in expected_rows:
+                        raise ValueError(
+                            "RELEASE_ARTIFACT_MISMATCH: unexpected schedule match code"
+                        )
+                    anchors.append((pymupdf.Rect(line["bbox"]), marker))
+        else:
+            for marker in expected_rows:
+                anchors.extend(
+                    (bbox, marker)
+                    for bbox in page.search_for(marker)
+                    if margin <= bbox.x0 < boundaries[1]
+                )
         anchors.sort(key=lambda item: item[0].y0)
+        page_text = normalize(page.get_text()) if classic and anchors else ""
         for index, (bbox, marker) in enumerate(anchors):
             if marker in found_rows:
                 raise ValueError("RELEASE_ARTIFACT_MISMATCH: schedule row appears more than once")
@@ -895,6 +953,10 @@ def document_qa(model: dict, directory: Path) -> dict:
                 else page.rect.height - margin
             )
             row = expected_rows[marker]
+            if classic and normalize(date_label(row["date"])) not in page_text:
+                raise ValueError(
+                    "RELEASE_ARTIFACT_MISMATCH: schedule row appears under the wrong date"
+                )
             expected_cells = [
                 marker,
                 f"{row['date']} {row['time']}",
@@ -903,11 +965,11 @@ def document_qa(model: dict, directory: Path) -> dict:
                 f"{row['side_a']} 對 {row['side_b']}",
             ]
             if reference:
-                expected_cells = schedule_cells(row)
+                expected_cells = schedule_cells(row, classic=classic)
             for column, expected_cell in enumerate(expected_cells):
                 clip = pymupdf.Rect(
                     boundaries[column],
-                    bbox.y0 - 1,
+                    bbox.y0 - (3 if classic else 1),
                     boundaries[column + 1],
                     bottom,
                 )

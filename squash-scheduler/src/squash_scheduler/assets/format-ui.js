@@ -27,6 +27,27 @@ function formatEstimate(plan, entries) {
     return {main_matches: mainMatches, encouragement_max: encouragementMax, qualifiers, poolMatches};
 }
 
+function preferredPoolSizes(entries) {
+    const fourPlayerPools = entries % 3;
+    const threePlayerPools = (entries - 4 * fourPlayerPools) / 3;
+    if (threePlayerPools < 0 || fourPlayerPools + threePlayerPools < 2) return [];
+    return [...Array(fourPlayerPools).fill(4), ...Array(threePlayerPools).fill(3)];
+}
+
+function distributeQualifiers(sizes, qualifiers) {
+    const pools = sizes.map(size => ({size, advances: 1}));
+    let remaining = qualifiers - pools.length;
+    for (let advances = 2; remaining > 0; advances += 1) {
+        for (const pool of pools) {
+            if (remaining > 0 && advances <= pool.size) {
+                pool.advances = advances;
+                remaining -= 1;
+            }
+        }
+    }
+    return pools;
+}
+
 function updateFormatTotals(output, editedId, estimate) {
     let main = 0;
     let reserve = 0;
@@ -130,6 +151,28 @@ function formatsView() {
     const poolList = node('div', null, 'format-pools');
     const poolActions = node('div', null, 'format-actions');
     const pools = saved.pools.map(pool => ({...pool}));
+    const preferredSizes = preferredPoolSizes(entries);
+    const savedQualifiers = saved.pools.reduce((total, pool) => total + pool.advances, 0);
+    const suggestionText = node('p', null, 'muted');
+    const suggestionButton = button('套用建議配池', () => {
+        const suggested = suggestedPools();
+        if (!suggested) return;
+        pools.splice(0, pools.length, ...suggested);
+        renderPools(0);
+        refresh();
+    });
+    const suggestion = node('div', null, 'format-actions');
+    suggestion.append(suggestionText, suggestionButton);
+
+    function suggestedPools() {
+        if (!preferredSizes.length) return null;
+        const qualifiers = savedQualifiers || Math.max(preferredSizes.length, bronze.checked ? 4 : 2);
+        if (qualifiers < preferredSizes.length || qualifiers > entries || (bronze.checked && qualifiers < 4)) {
+            return null;
+        }
+        return distributeQualifiers(preferredSizes, qualifiers);
+    }
+
     function renderPools(focusIndex) {
         poolList.replaceChildren();
         pools.forEach((pool, index) => {
@@ -168,7 +211,7 @@ function formatsView() {
             refresh();
         }));
     }
-    poolEditor.append(node('h3', '手動配池'), poolList, poolActions);
+    poolEditor.append(node('h3', '配池'), suggestion, poolList, poolActions);
     controls.append(poolEditor);
     const estimateOutput = node('div', null, 'format-estimate');
     estimateOutput.setAttribute('role', 'status');
@@ -199,6 +242,18 @@ function formatsView() {
         poolEditor.hidden = !isPools;
         bronzeRow.hidden = !isPools && !isElimination;
         encouragementRow.hidden = !isElimination || !saved.encouragement_allowed;
+        const suggested = isPools ? suggestedPools() : null;
+        suggestion.hidden = !isPools || !preferredSizes.length;
+        const matchesPreferred = plan.pools.map(pool => pool.size).sort((a, b) => b - a).join(',')
+            === preferredSizes.join(',');
+        suggestionButton.hidden = !suggested || matchesPreferred;
+        if (suggested) {
+            const estimate = formatEstimate({...plan, pools: suggested}, entries);
+            const baseline = Number.isInteger(saved.main_matches) ? `（已儲存 ${saved.main_matches} 場）` : '';
+            suggestionText.textContent = `建議 ${preferredSizes.join('＋')} 人，${estimate.qualifiers} 人晉級，主賽 ${estimate.main_matches} 場${baseline}。`;
+        } else {
+            suggestionText.textContent = `優先配法為 ${preferredSizes.join('＋')} 人。請手動確認各池晉級人數。`;
+        }
         const poolSize = plan.pools.reduce((total, pool) => total + pool.size, 0);
         const qualifiers = plan.pools.reduce((total, pool) => total + pool.advances, 0);
         let problem = '';
@@ -227,6 +282,12 @@ function formatsView() {
         updateFormatTotals(totalOutput, group.id, estimate);
     }
 
+    mode.addEventListener('change', () => {
+        if (mode.value !== 'pools_knockout' || pools.length) return;
+        const suggested = suggestedPools();
+        if (suggested) pools.push(...suggested);
+        renderPools();
+    });
     form.addEventListener('change', refresh);
     form.addEventListener('submit', event => {
         event.preventDefault();

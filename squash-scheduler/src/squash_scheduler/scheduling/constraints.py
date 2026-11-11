@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
-from itertools import combinations
+from itertools import combinations, pairwise
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -21,7 +21,7 @@ from squash_scheduler.domain.matches import (
     possible_participants,
     validate_graph,
 )
-from squash_scheduler.domain.models import Assignment, Issue, Match, Snapshot
+from squash_scheduler.domain.models import Assignment, Issue, LoserSide, Match, Snapshot, WinnerSide
 
 from .paths import PathAnalysis, PathAnalysisIncomplete, analyze_paths
 
@@ -150,6 +150,20 @@ class ScheduleContext:
         if self.path_analysis is not None:
             return self.path_analysis.shared(first, second)
         return self.candidates.get(first, set()) & self.candidates.get(second, set())
+
+    def advances_from(self, match_id: str, prior_id: str) -> bool:
+        match = self.matches[match_id]
+        return any(
+            isinstance(side, (WinnerSide, LoserSide)) and side.match_id == prior_id
+            for side in (match.side_a, match.side_b)
+        )
+
+    def requires_player_rest(self, first: str, second: str) -> bool:
+        return (
+            bool(self.shared_people(first, second))
+            or bool(self.minimum_rest_minutes)
+            and (self.advances_from(first, second) or self.advances_from(second, first))
+        )
 
     def player_paths(self) -> dict[str, list[frozenset[str]]]:
         if self.path_analysis is not None:
@@ -348,6 +362,17 @@ def build_context(snapshot: Snapshot) -> tuple[ScheduleContext | None, list[Issu
             path_analysis = analyze_paths(snapshot, set(matches))
         except (PathAnalysisIncomplete, KeyError, StopIteration, RecursionError) as exc:
             return None, [*issues, issue("PLAYER_PATH_ANALYSIS_INCOMPLETE", str(exc))]
+    dependencies = dependency_map(snapshot)
+    if (config.get("runtime") or {}).get("keep_elimination_rounds_in_order"):
+        elimination_stages = {stage.id for stage in snapshot.stages if stage.type == "elimination"}
+        by_stage: dict[str, dict[int, set[str]]] = defaultdict(lambda: defaultdict(set))
+        for match in matches.values():
+            if match.stage_id in elimination_stages and match.kind != "exhibition":
+                by_stage[match.stage_id][match.round].add(match.id)
+        for rounds in by_stage.values():
+            for before, after in pairwise(sorted(rounds)):
+                for mid in rounds[after]:
+                    dependencies.setdefault(mid, set()).update(rounds[before])
     return ScheduleContext(
         matches,
         timing,
@@ -356,7 +381,7 @@ def build_context(snapshot: Snapshot) -> tuple[ScheduleContext | None, list[Issu
         anchors,
         zone,
         candidates,
-        dependency_map(snapshot),
+        dependencies,
         {p.id: p.minimum_rest_minutes or 0 for p in snapshot.participants},
         minimum_rest_minutes=workload.minimum_rest_minutes or 0,
         max_matches_per_day=workload.max_matches_per_day,
@@ -527,8 +552,7 @@ def validate_schedule(snapshot: Snapshot, *, baseline_assignments: Any = None) -
             first_id, second_id, first, second = second_id, first_id, second, first
         if first.court_id == second.court_id and second.start_at < first.court_release_at:
             issues.append(issue("COURT_OVERLAP", f"Court overlaps match {first_id}", second_id))
-        shared = context.shared_people(first_id, second_id)
-        if shared:
+        if context.requires_player_rest(first_id, second_id):
             wait = rest_minutes(context, first_id, second_id)
             if first.court_id != second.court_id:
                 wait += transfer_minutes(context, first_id, second_id)
@@ -536,7 +560,7 @@ def validate_schedule(snapshot: Snapshot, *, baseline_assignments: Any = None) -
                 issues.append(
                     issue(
                         "PLAYER_REST_VIOLATION",
-                        f"Possible participant conflicts with {first_id}: {sorted(shared)}",
+                        f"Player rest is insufficient after {first_id}: {sorted(context.shared_people(first_id, second_id))}",
                         second_id,
                     )
                 )

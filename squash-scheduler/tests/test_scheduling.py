@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from squash_scheduler.domain.matches import round_robin
+from squash_scheduler.domain.matches import elimination, round_robin
 from squash_scheduler.domain.models import (
     Assignment,
     Division,
@@ -122,6 +122,69 @@ def codes(snapshot: Snapshot, **kwargs) -> set[str]:
 
 def successful(report: dict) -> bool:
     return report["status"] in {"FEASIBLE", "OPTIMAL"}
+
+
+def test_unresolved_winners_and_losers_get_the_event_rest_floor():
+    snapshot = fixture(courts=2)
+    snapshot.config["player_workload"] = {
+        "minimum_rest_minutes": 60,
+        "max_matches_per_day": 5,
+        "participant_scope": "confirmed_only",
+    }
+    for entry in snapshot.entries:
+        entry.effective_division_id = snapshot.divisions[0].id
+    snapshot.matches = elimination(
+        [entry.id for entry in snapshot.entries],
+        snapshot.divisions[0].id,
+        snapshot.stages[0].id,
+        bronze=True,
+    )
+    snapshot.assignments = [
+        assign(snapshot, 0, "08:00"),
+        assign(snapshot, 1, "08:00", court=1),
+        assign(snapshot, 2, "08:30"),
+        assign(snapshot, 3, "08:30", court=1),
+    ]
+    assert "PLAYER_REST_VIOLATION" in codes(snapshot)
+    result = solve_schedule(snapshot)
+    assert successful(result), result
+    assert codes(snapshot) == set()
+    scheduled = {a.match_id: a for a in snapshot.assignments}
+    for match in snapshot.matches[2:]:
+        assert scheduled[match.id].start_at >= max(
+            scheduled[earlier.id].play_end_at for earlier in snapshot.matches[:2]
+        ) + timedelta(minutes=60)
+
+
+def test_ordered_rounds_wait_for_the_other_bracket_branch():
+    snapshot = fixture(courts=2)
+    extra = fixture()
+    for person in extra.participants:
+        person.display_name = f"Extra {person.display_name}"
+    snapshot.participants.extend(extra.participants)
+    snapshot.registrations.extend(extra.registrations)
+    snapshot.entries.extend(extra.entries)
+    division, stage = snapshot.divisions[0], snapshot.stages[0]
+    for registration in snapshot.registrations:
+        registration.original_division_id = division.id
+    for entry in snapshot.entries:
+        entry.effective_division_id = division.id
+    snapshot.matches = elimination([entry.id for entry in snapshot.entries], division.id, stage.id)
+    snapshot.assignments = [
+        assign(snapshot, 0, "08:00"),
+        assign(snapshot, 1, "08:00", court=1),
+        assign(snapshot, 2, "08:30"),
+        assign(snapshot, 3, "10:00"),
+        assign(snapshot, 4, "09:00"),
+        assign(snapshot, 5, "10:30"),
+        assign(snapshot, 6, "11:00"),
+    ]
+    assert codes(snapshot) == set()
+    snapshot.config["runtime"]["keep_elimination_rounds_in_order"] = True
+    assert "ADVANCEMENT_NOT_READY" in codes(snapshot)
+    result = solve_schedule(snapshot)
+    assert successful(result), result
+    assert codes(snapshot) == set()
 
 
 def test_at15_grid_is_independent_of_occupation():

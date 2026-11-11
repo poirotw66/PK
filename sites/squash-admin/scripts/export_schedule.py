@@ -18,7 +18,7 @@ def main():
     from squash_scheduler.operations import OperatorService
     from squash_scheduler.scheduling.constraints import (
         build_context, is_court_locked, is_time_locked, minute,
-        ranking_dependencies, round_robin_match_groups,
+        ranking_dependencies, rest_minutes, round_robin_match_groups,
     )
     from squash_scheduler.storage.repository import Repository
 
@@ -49,6 +49,8 @@ def main():
         dependencies = []
         for prior in sorted(context.dependencies.get(mid, set())):
             lag = max(timing["ranking_confirmation_minutes"], context.timing[prior]["ranking_confirmation_minutes"]) if prior in ranks[mid] else 0
+            if context.advances_from(mid, prior):
+                lag = max(lag, rest_minutes(context, prior, mid))
             dependencies.append({"id": prior, "lag": max(lag, context.deferred_lags.get(mid, {}).get(prior, 0))})
         scoring = effective_rules(snapshot, match.stage_id)
         if (scoring.get("best_of_games") not in {3, 5}

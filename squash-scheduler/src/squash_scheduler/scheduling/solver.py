@@ -28,6 +28,7 @@ from .constraints import (
     validate_schedule,
 )
 from .diagnostics import expansion_proposal, model_diagnostics, preflight, schedule_diff
+from .preferences import in_preferred_window, preferred_starts
 
 
 def _greedy_hint(
@@ -83,7 +84,7 @@ def _greedy_hint(
             ),
             default=0,
         )
-        shared = [p for p in chosen if context.shared_people(ready, p)]
+        shared = [p for p in chosen if context.requires_player_rest(ready, p)]
         options = []
         for court in range(len(courts)):
             lower = dependency_ready
@@ -170,8 +171,14 @@ def solve_schedule(
     without an incumbent, or failure of the independent validator.
     """
     runtime = snapshot.config.get("runtime") or {}
+    use_preferences = (
+        runtime.get("preferred_schedule_windows", []) != []
+        and compact_groups is not False
+        and local_match_ids is None
+        and not any(change.get("kind") == "live_match_event" for change in snapshot.changes)
+    )
     if compact_groups is None:
-        compact_groups = runtime.get("schedule_objective") in {
+        compact_groups = use_preferences or runtime.get("schedule_objective") in {
             "compact_groups",
             "round_robin_first",
             "round_robin_batches",
@@ -204,6 +211,11 @@ def solve_schedule(
         return report
 
     if context is None:
+        return finish("MODEL_INVALID")
+    try:
+        preferred = preferred_starts(snapshot, context) if use_preferences else {}
+    except ValueError as exc:
+        issues.append(issue("PREFERRED_SCHEDULE_WINDOW_INVALID", str(exc)))
         return finish("MODEL_INVALID")
     report["diagnostics"] = model_diagnostics(context)
     if local_match_ids is not None and not local_match_ids <= set(context.matches):
@@ -475,7 +487,7 @@ def solve_schedule(
                 for day in days:
                     model.add(on_day[mid, day] == on_day[group[0], day])
     for first, second in combinations(context.matches, 2):
-        if not context.shared_people(first, second):
+        if not context.requires_player_rest(first, second):
             continue
         rest = rest_minutes(context, first, second)
         transfer = transfer_minutes(context, first, second)
@@ -639,7 +651,22 @@ def solve_schedule(
                 )
                 for slot, members in slot_groups.items()
             )
-        if round_robin_first:
+        if preferred:
+            missed_windows = []
+            for mid, windows in preferred.items():
+                available_starts = {start for start, _ in choices[mid]}
+                in_window = sorted(
+                    start for start in available_starts if in_preferred_window(start, windows)
+                )
+                if not in_window or len(in_window) == len(available_starts):
+                    continue
+                fits = model.new_bool_var(f"preferred_start_{mid}")
+                model.add_linear_expression_in_domain(
+                    starts[mid], cp_model.Domain.from_values(in_window)
+                ).only_enforce_if(fits)
+                missed_windows.append(1 - fits)
+            model.minimize((compact_bound + 1) * sum(missed_windows) + compact_cost)
+        elif round_robin_first:
             rr_stages = {stage.id for stage in snapshot.stages if stage.type == "round_robin"}
             rr_mids = [mid for mid in context.matches if context.matches[mid].stage_id in rr_stages]
             deferred_divisions = set(runtime.get("day_two_priority_division_ids", []))
@@ -656,13 +683,17 @@ def solve_schedule(
         else:
             model.minimize(compact_cost)
         report["diagnostics"]["objective"] = {
-            "strategy": "round_robin_batches"
+            "strategy": "preferred_schedule_windows"
+            if preferred
+            else "round_robin_batches"
             if division_batches
             else "round_robin_first"
             if round_robin_first
             else "compact_round_robin_groups",
             "priority": (
-                ["day_one_round_robin_count", "defer_selected_divisions"]
+                ["minimize_matches_outside_preferred_windows"]
+                if preferred
+                else ["day_one_round_robin_count", "defer_selected_divisions"]
                 if round_robin_first
                 else []
             )
@@ -673,7 +704,9 @@ def solve_schedule(
                 "stage_span",
                 "event_finish",
             ],
-            "method": "day-one round-robin priority, deferred division priority, then weighted compactness"
+            "method": "minimize matches outside preferred start windows, then weighted compactness"
+            if preferred
+            else "day-one round-robin priority, deferred division priority, then weighted compactness"
             if round_robin_first
             else "weighted group span 100; player daily span 10; stage span 1; event finish 1",
         }
@@ -738,6 +771,18 @@ def solve_schedule(
         report["diagnostics"]["independent_validation"] = "failed"
         return finish("MODEL_INVALID")
     issues.extend(validation)
+    if preferred:
+        outside = [
+            assignment.match_id
+            for assignment in assignments
+            if assignment.match_id in preferred
+            and not in_preferred_window(minute(assignment.start_at), preferred[assignment.match_id])
+        ]
+        report["diagnostics"]["preferred_windows"] = {
+            "requested_count": len(preferred),
+            "in_window_count": len(preferred) - len(outside),
+            "outside_match_ids": outside,
+        }
     report["diagnostics"]["changes"] = schedule_diff(baseline, assignments)
     report["assignments"] = [a.model_dump(mode="json") for a in assignments]
     snapshot.assignments = assignments

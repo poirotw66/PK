@@ -53,6 +53,17 @@ def test_three_pools_share_one_sheet_and_knockout_keeps_all_match_codes(tmp_path
     assert "季殿" in text
     for row in (row for row in model["matches"] if row["stage"] == "淘汰賽"):
         assert row["code"] in text
+    labels = {
+        row["round"]: row["round_label"]
+        for row in model["matches"]
+        if row["kind"] == "正式賽" and row["stage_type"] == "elimination"
+    }
+    assert labels == {1: "八強", 2: "四強", 3: "冠亞"}
+    assert all(
+        schedule_cells(row, classic=True)[2].endswith(row["round_label"])
+        for row in model["matches"]
+        if "round_label" in row
+    )
 
 
 def test_untrusted_labels_are_escaped_and_same_names_keep_distinct_vertices(tmp_path):
@@ -116,17 +127,26 @@ def test_historical_round_and_generic_draw_slot_remain_visible_without_changing_
 
 @pytest.mark.integration
 @pytest.mark.skipif(os.environ.get("SQUASH_PDF_SMOKE") != "1", reason="Installed Edge PDF check")
-def test_reference_pdf_has_mixed_orientation_and_detects_swapped_opponents(tmp_path):
+@pytest.mark.parametrize("template", ["reference-v1", "reference-v2"])
+def test_reference_pdf_has_mixed_orientation_and_detects_swapped_opponents(tmp_path, template):
     snapshot = document_event()
-    snapshot.config["publication"]["layout_template_id"] = "reference-v1"
+    snapshot.config["publication"]["layout_template_id"] = template
     model = documents.view_model(snapshot)
     html = documents.render_html(model, tmp_path)
     documents.export_excel(snapshot, model, tmp_path / "schedule.xlsx")
-    documents.render_pdf(html, tmp_path / "booklet.pdf")
+    html_path = tmp_path / "review.html" if template == "reference-v2" else None
+    if html_path is not None:
+        html_path.write_text(html, "utf-8")
+    documents.render_pdf(html, tmp_path / "booklet.pdf", html_path=html_path)
     assert documents.document_qa(model, tmp_path)["passed"]
     with pymupdf.open(tmp_path / "booklet.pdf") as pdf:
         assert any(p.rect.width > p.rect.height for p in pdf)
         assert any(p.rect.width < p.rect.height for p in pdf)
+        if template == "reference-v2":
+            schedule = next(p for p in pdf if "預計時間" in p.get_text().splitlines())
+            text = schedule.get_text().splitlines()
+            assert "球場" not in text
+            assert model["matches"][0]["code"] in text
     changed = {**model, "matches": [dict(row) for row in model["matches"]]}
     changed["matches"][0]["side_a"], changed["matches"][0]["side_b"] = (
         changed["matches"][0]["side_b"],

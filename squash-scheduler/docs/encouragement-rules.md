@@ -10,6 +10,21 @@
 
 資格以本次報名組別判斷；不得以兼報其他組別取得資格。受傷中途退賽另列待審，不自行視為一般完賽敗者。
 
+## 簡章匯出前試排
+
+用已確認籤表、已完成主賽排程且尚未登錄成績的工作區試排。工具會在記憶體複本模擬首輪，優先讓非種子選手落敗，以測試該籤表可產生的最多鼓勵賽。預設在各組最後一場首輪比賽結束 15 分鐘後，才允許排入該組鼓勵賽。
+
+```sh
+.venv/bin/python scripts/check_encouragement_capacity.py --workspace "/path/to/workspace"
+.venv/bin/python scripts/check_encouragement_capacity.py --workspace "/path/to/workspace" --replan-main
+```
+
+第一個指令固定主賽時間與場地。若回報 `infeasible`，第二個指令可在複本中一起重排主賽與鼓勵賽，再固定新主賽，重演並檢查鼓勵賽時段。`timeout` 表示在求解時間內未找到解。輸出包含場數、時段與移動的主賽場數，工作區只讀取。
+
+使用 `--seed` 重跑不同的模擬賽果和鼓勵賽抽籤，用 `--confirmation-delay-minutes` 測試延後確認成績。每次結果只代表該情境和工作區的規則，正式成績確認後仍須核對資格與排程。
+
+## 資格報告
+
 資格報告使用原有種子設定與已確認成績，不重抽、不修改賽程，也不直接將「第一輪敗者」全部加入鼓勵賽。種子未確認、首輪尚未結束或來源無法確認時列為待確認。
 
 ```powershell
