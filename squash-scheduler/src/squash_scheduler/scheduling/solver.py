@@ -576,6 +576,7 @@ def solve_schedule(
                 model.add_max_equality(group_last, [ends[m] for m in group])
                 group_spans.append(group_last - group_first)
         player_day_spans = []
+        division_day_spans = []
         if context.max_matches_per_day is not None:
             day_starts, day_ends = {}, {}
             for mid in context.matches:
@@ -602,15 +603,29 @@ def solve_schedule(
                     model.add_max_equality(day_last, [day_ends[mid, day] for mid in mids])
                     model.add_max_equality(span, [0, day_last - day_first])
                     player_day_spans.append(span)
+            division_ids = sorted({m.division_id for m in context.matches.values()})
+            for div_id in division_ids:
+                div_mids = [m for m in context.matches if context.matches[m].division_id == div_id]
+                if len(div_mids) < 2:
+                    continue
+                for day in days:
+                    div_day_first = model.new_int_var(lower, upper, f'div_first_{div_id}_{day}')
+                    div_day_last = model.new_int_var(lower, upper, f'div_last_{div_id}_{day}')
+                    div_span = model.new_int_var(0, upper - lower, f'div_span_{div_id}_{day}')
+                    model.add_min_equality(div_day_first, [day_starts[mid, day] for mid in div_mids])
+                    model.add_max_equality(div_day_last, [day_ends[mid, day] for mid in div_mids])
+                    model.add_max_equality(div_span, [0, div_day_last - div_day_first])
+                    division_day_spans.append(div_span)
         compact_cost = (
             100 * sum(group_spans)
+            + 50 * sum(division_day_spans)
             + 10 * sum(player_day_spans)
             + sum(stage_spans)
             + makespan
             - lower
         )
         compact_bound = (upper - lower + 1) * (
-            100 * len(group_spans) + 10 * len(player_day_spans) + len(stage_spans) + 1
+            100 * len(group_spans) + 50 * len(division_day_spans) + 10 * len(player_day_spans) + len(stage_spans) + 1
         )
         if division_batches:
             slot_groups: dict[int, list] = {}
@@ -700,6 +715,7 @@ def solve_schedule(
             + (["minimize_mixed_division_slots"] if division_batches else [])
             + [
                 "round_robin_group_span",
+                "division_daily_span",
                 "player_daily_span",
                 "stage_span",
                 "event_finish",
