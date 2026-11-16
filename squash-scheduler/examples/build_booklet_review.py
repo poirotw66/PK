@@ -14,6 +14,7 @@ from pathlib import Path
 import pymupdf
 
 from squash_scheduler.domain.config import Prospectus
+from squash_scheduler.domain.match_numbers import chronological_match_numbers
 from squash_scheduler.domain.models import Snapshot, content_hash, new_id
 from squash_scheduler.exporters.documents import build_documents
 from squash_scheduler.exporters.prospectus import publication_content_issues
@@ -51,24 +52,13 @@ def build(source: Path, destination: Path, prospectus_content: Path | None = Non
     assert original_assignments == [a.model_dump(mode="json") for a in snapshot.assignments]
     # This new demonstration edition uses readable chronological display numbers.
     # Match IDs, typed opponents, rules and all court/time assignments stay intact.
-    assignments = {a.match_id: a for a in snapshot.assignments}
-    courts = {c["id"]: c["sort_order"] for c in snapshot.config["courts"]}
-    number_mapping = []
-    for number, match in enumerate(
-        sorted(
-            snapshot.matches,
-            key=lambda m: (
-                assignments[m.id].start_at,
-                courts[assignments[m.id].court_id],
-                m.display_code or m.id,
-            ),
-        ),
-        1,
-    ):
-        number_mapping.append(
-            {"match_id": match.id, "source_code": match.display_code, "review_code": str(number)}
-        )
-        match.display_code = str(number)
+    numbers = chronological_match_numbers(snapshot)
+    number_mapping = [
+        {"match_id": match.id, "source_code": match.display_code, "review_code": numbers[match.id]}
+        for match in sorted(snapshot.matches, key=lambda m: int(numbers[m.id]))
+    ]
+    for match in snapshot.matches:
+        match.display_code = numbers[match.id]
     for original, current in zip(original_matches, snapshot.matches, strict=True):
         assert {k: v for k, v in original.items() if k != "display_code"} == {
             k: v for k, v in current.model_dump(mode="json").items() if k != "display_code"

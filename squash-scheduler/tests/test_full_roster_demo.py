@@ -6,6 +6,9 @@ from collections import defaultdict
 from pathlib import Path
 
 import pytest
+from test_scheduling import assign, fixture
+
+from squash_scheduler.domain.match_numbers import chronological_match_numbers
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
@@ -60,11 +63,27 @@ def test_single_entry_groups_are_retained_without_invented_matches(source_snapsh
         assert sum(e.effective_division_id == division.id for e in snapshot.entries) == 1
         assert not any(m.division_id == division.id for m in snapshot.matches)
     assert len(snapshot.matches) == 279
-    assert len({m.display_code for m in snapshot.matches}) == 279
-    assert all(m.display_code.startswith("DEMO-") for m in snapshot.matches)
+    assert len({m.id for m in snapshot.matches}) == 279
     assert [c["label"] for c in snapshot.config["courts"]] == ["場地A", "場地B", "場地C", "場地D"]
     assert snapshot.config["event"]["event_dates"] == ["2026-10-24", "2026-10-25"]
     assert not snapshot.results
+
+
+@pytest.mark.parametrize(
+    ("first_start", "expected_codes"), [("08:00", ("2", "1")), ("07:45", ("1", "2"))]
+)
+def test_match_numbers_follow_start_time_then_court_order(first_start, expected_codes):
+    snapshot = fixture(courts=2)
+    later_court, earlier_court = snapshot.matches
+    snapshot.assignments = [
+        assign(snapshot, 0, first_start, court=1),
+        assign(snapshot, 1, "08:00", court=0),
+    ]
+
+    assert chronological_match_numbers(snapshot) == {
+        later_court.id: expected_codes[0],
+        earlier_court.id: expected_codes[1],
+    }
 
 
 @pytest.mark.parametrize("count", [7, 8, 9, 11, 12, 13, 14, 16, 19])

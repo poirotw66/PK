@@ -17,6 +17,7 @@ from typing import Any
 
 from squash_scheduler.domain.config import EventConfig, load_config
 from squash_scheduler.domain.draws import run_draw
+from squash_scheduler.domain.match_numbers import chronological_match_numbers
 from squash_scheduler.domain.matches import generate_matches
 from squash_scheduler.domain.models import (
     Division,
@@ -266,6 +267,7 @@ def build_snapshot(project_root: Path) -> Snapshot:
     for division in snapshot.divisions:
         if division.status == "exhibition_only":
             continue
+        assert division.format_plan is not None
         snapshot, _ = approve(
             snapshot,
             "format:" + division.id,
@@ -291,8 +293,6 @@ def build_snapshot(project_root: Path) -> Snapshot:
             "Approve this saved NEW DEMO draw only, never the historical 2026 draw",
         )
     generate_matches(snapshot)
-    for index, match in enumerate(snapshot.matches, 1):
-        match.display_code = f"DEMO-{index:03}"
     return snapshot
 
 
@@ -311,6 +311,9 @@ def run_full_roster_demo(
     write("snapshot-before-solve.json", snapshot.model_dump(mode="json"))
     solver = solve_schedule(snapshot, time_limit_seconds=time_limit)
     write("solver-report.json", solver)
+    numbers = chronological_match_numbers(snapshot)
+    for match in snapshot.matches:
+        match.display_code = numbers[match.id]
     g4 = validate(snapshot, "G4")
     independent = [i.model_dump(mode="json") for i in validate_schedule(snapshot)]
     write("g4-report.json", {**g4, "independent_schedule_issues": independent})
