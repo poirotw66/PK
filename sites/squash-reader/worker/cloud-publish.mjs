@@ -66,7 +66,7 @@ async function cloudPublish(request, env) {
             return current.cloud_request_hash === requestHash ? json(ack()) : json({ error: 'Sequence content mismatch' }, 409);
     }
     const descriptor = current?.descriptor ?? BOOTSTRAP;
-    const stored = await env.BUCKET.get('snapshots/' + descriptor.version + '.json');
+    const stored = await env.BUCKET.get(STORAGE_PREFIX + 'snapshots/' + descriptor.version + '.json');
     const asset = ASSETS[descriptor.snapshot_url];
     const base = stored ? await stored.json() : asset ? JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(asset.body), c => c.charCodeAt(0)))) : null;
     if (!base)
@@ -117,7 +117,7 @@ async function cloudPublish(request, env) {
     catch {
         return json({ error: 'Invalid merged snapshot' }, 400);
     }
-    const body = JSON.stringify(merged), snapshotKey = 'snapshots/' + merged.version + '.json', digest = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body)));
+    const body = JSON.stringify(merged), snapshotKey = STORAGE_PREFIX + 'snapshots/' + merged.version + '.json', digest = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body)));
     const saved = await env.BUCKET.put(snapshotKey, body, { onlyIf: { etagDoesNotMatch: '*' }, customMetadata: { sha256: digest }, httpMetadata: { contentType: 'application/json' } });
     if (!saved && (await env.BUCKET.head(snapshotKey))?.customMetadata?.sha256 !== digest)
         return json({ error: 'Version content mismatch' }, 409);

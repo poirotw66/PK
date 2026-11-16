@@ -1,5 +1,5 @@
 const json = (value, status = 200, headers = {}) => new Response(JSON.stringify(value), {status, headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...headers}});
-const currentKey = 'sync/current.json';
+const currentKey = STORAGE_PREFIX + 'sync/current.json';
 const hex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2,'0')).join('');
 
 function validate(value, schema = SCHEMA) {
@@ -63,8 +63,7 @@ async function ingest(request, env, path) {
   const {object,current} = await readCurrent(env);
   const now = new Date().toISOString();
   if(current?.authority==='cloud')return json({error:'Cloud publication controls this site'},409);
-  const expected = env.SYNC_WORKSPACE_ID || BOOTSTRAP.workspace_id;
-  if (value.workspace_id !== expected) return json({error:'Unexpected workspace'},409);
+  if (value.workspace_id !== BOOTSTRAP.workspace_id) return json({error:'Unexpected workspace'},409);
   if (path === '/sync/heartbeat') {
     if (Object.keys(value).some(key=>!['version','workspace_id'].includes(key))) return json({error:'Unexpected field'},400);
     if (!current || current.descriptor.version !== value.version) return json({error:'Snapshot required'},409);
@@ -76,7 +75,7 @@ async function ingest(request, env, path) {
     if (!/^[a-f0-9]{64}$/.test(value.version) || !Number.isFinite(Date.parse(value.updated_at)) || Date.parse(value.updated_at)>Date.now()+120000) throw new Error('Invalid version or time');
   } catch { return json({error:'Invalid public snapshot'},400); }
   if (current && Date.parse(value.updated_at) < Date.parse(current.descriptor.updated_at)) return json({error:'Stale revision'},409);
-  const snapshotKey = 'snapshots/'+value.version+'.json';
+  const snapshotKey = STORAGE_PREFIX+'snapshots/'+value.version+'.json';
   const digest = hex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(raw)));
   const stored = await env.BUCKET.put(snapshotKey,raw,{onlyIf:{etagDoesNotMatch:'*'},customMetadata:{sha256:digest},httpMetadata:{contentType:'application/json'}});
   if (!stored) {
@@ -110,7 +109,7 @@ export async function handle(request, env) {
     return json(descriptor,200,{ETag:etag});
   }
   if (/^\/public\/snapshots\/[a-f0-9]{64}\.json$/.test(path)) {
-    const object=await env.BUCKET?.get(path.slice('/public/'.length));
+    const object=await env.BUCKET?.get(STORAGE_PREFIX+path.slice('/public/'.length));
     if (object) return new Response(request.method==='HEAD' ? null : object.body,{headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=31536000, immutable'}});
   }
   const pages={'/':'live','/live':'live','/schedule':'schedule','/brackets':'bracket','/standings':'standings'};

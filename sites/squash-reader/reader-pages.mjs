@@ -1,7 +1,7 @@
 // Public page routing preserves existing shared query and chapter links.
 export const pageInfo = {
   live: {path:'/live',view:'courts',title:'即時賽況',description:'看現在誰在比賽，比分自動更新。'},
-  schedule: {path:'/schedule',view:'schedule',title:'查詢賽程',description:'輸入選手姓名，查看自己的比賽時間與場地。'},
+  schedule: {path:'/schedule',view:'schedule',title:'查詢賽程',description:'輸入選手姓名，查看自己的場次與比賽時間。'},
   bracket: {path:'/brackets',view:'bracket',title:'晉級對戰',description:'選擇組別，查看對戰安排與晉級結果。'},
   standings: {path:'/standings',view:'standings',title:'積分排名',description:'選擇組別，查看循環賽成績與排名。'},
 };

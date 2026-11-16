@@ -1,3 +1,4 @@
+import { replaceDraftSchedule, canReplaceDraft } from "../../../lib/schedule-cutover";
 import { retryPublicSync } from "../../../lib/sync-service";
 import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
@@ -71,10 +72,10 @@ async function handle(request: Request) {
         const signIn = { email: user.email, sign_out_url: chatGPTSignOutPath("/") };
         if (!account)
             return json({ error: "此帳號沒有管理權限。", sign_in: signIn }, 403);
-        const imported = await db.prepare("SELECT revision FROM tournament WHERE id=1").first();
+        const imported = await db.prepare("SELECT revision, json_array_length(payload, '$.matches') AS matches FROM tournament WHERE id=1").first<{ revision: string; matches: number }>();
         const active = await readSession(request, account.owner) ?? await createSession(request, account.owner);
         return json(
-            { imported: !!imported, can_import: account.kind === "primary", csrf: active.csrf, sign_in: signIn },
+            { imported: !!imported, can_import: account.kind === "primary", can_switch_draft: account.kind === "primary" && canReplaceDraft(imported), csrf: active.csrf, sign_in: signIn },
             200, "setCookie" in active ? { "Set-Cookie": active.setCookie } : {},
         );
     }
@@ -98,6 +99,11 @@ async function handle(request: Request) {
         throw new HttpError(404, "找不到此頁面。");
     }
     checkCsrf(request, active.csrf);
+    if (path === "switch-draft") {
+        if (account.kind !== "primary")
+            throw new HttpError(403, "只有原管理員可切換賽程。");
+        return json(await replaceDraftSchedule(await body(request), account.actor));
+    }
     if (path === "import") {
         const { owner, kind } = account;
         if (kind !== "primary")

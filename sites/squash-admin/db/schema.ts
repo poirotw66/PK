@@ -73,3 +73,9 @@ export const matchScores = sqliteTable("match_scores", {
   syncedVersion: integer("synced_version").notNull().default(0),
   syncError: text("sync_error"),
 });
+
+export const scheduleCutoverArchive = sqliteTable("schedule_cutover_archive", {
+    replacement: text("replacement").notNull(),
+    kind: text("kind").notNull(),
+    data: text("data").notNull(),
+});

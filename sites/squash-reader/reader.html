@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>壁球賽程查詢 · 模擬示範</title>
-  <meta name="description" content="輸入姓名找到你的壁球賽程，查看時間、場地、積分與晉級圖。模擬示範，非正式公告。">
+  <meta name="description" content="輸入姓名找到你的壁球賽程，查看場次、時間、積分與晉級圖。模擬示範，非正式公告。">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b433b'/%3E%3Cpath d='M7 7h18v18H7zM7 14h18M16 14v11' fill='none' stroke='%23d5ed97' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/live.css"><link rel="stylesheet" href="/experience.css"><link rel="stylesheet" href="/board.css">
@@ -34,12 +34,12 @@
     <section id="personal-summary" class="personal-summary" aria-label="個人賽程" hidden></section>
     <section class="browse-controls" aria-label="賽程篩選">
       <div class="browse-heading"><div><h2 id="schedule-heading">賽事日程</h2></div><p id="summary" class="summary" aria-live="polite"></p></div>
-      <div id="filter-home" class="filter-home"><div id="filter-fields" class="filter-row"><div class="filter-selects"><label>組別<select id="division"><option value="">全部組別</option></select></label><label>場地<select id="court"><option value="">全部場地</option></select></label><label class="sr-only">日期<select id="date"><option value="">全部日期</option></select></label></div></div></div>
+      <div id="filter-home" class="filter-home"><div id="filter-fields" class="filter-row"><div class="filter-selects"><label>組別<select id="division"><option value="">全部組別</option></select></label><label class="sr-only">日期<select id="date"><option value="">全部日期</option></select></label></div></div></div>
       <p id="query-context" class="query-context" hidden></p><div class="view-row"><button type="button" id="reset-filters" class="reset-filters" hidden>清除篩選 ↗</button></div>
     </section>
     <div class="reader-layout">
       <aside class="reader-sidebar" aria-label="閱讀導覽"><details id="reader-navigation" class="reader-navigation"><summary><span>頁內導覽</span><span id="nav-current">選擇閱讀章節</span></summary><p id="nav-context" class="muted">取得章節中</p><nav id="section-nav" aria-label="賽況章節"></nav><a class="reader-back-top" href="#reader-top">回到頁首 ↑</a></details></aside>
-      <div id="content"><section class="panel"><h2>正在準備賽程</h2><p class="empty">讀取比賽時間、場地與對戰名單。</p></section></div>
+      <div id="content"><section class="panel"><h2>正在準備賽程</h2><p class="empty">讀取場次、比賽時間與對戰名單。</p></section></div>
     </div>
     <details class="event-information"><summary>賽事資訊、PDF 與同步狀態</summary>      <div class="event-actions"><div class="hero-stat"><strong id="match-total">—</strong><span id="event-totals">場比賽</span><p id="workspace" class="muted"></p></div><div class="pdf-download"><a href="/downloads/event-booklet.pdf" download="event-booklet.pdf" class="pdf-download-link">下載賽事 PDF <span aria-hidden="true">↓</span></a><p>PDF_PAGE_COUNT 頁 · 固定版本</p><small>固定版本，可能與最新網站賽程不同。</small></div></div>    <details id="event-policy" class="event-policy"><summary>暫定賽程 · 分組輪替 <span>排程說明 ＋</span></summary><div class="publication-note"><span class="demo-label">模擬示範</span><p>賽程由賽務確認後發布，請依最新時間與場地出賽。尚未確定的晉級對戰，待賽務確認後更新。本網站為模擬示範，非主辦正式公告。</p></div></details>
     <section class="sync-strip" aria-label="資料更新與同步狀態"><details class="sync-status"><summary><span class="sync-stamp">資料更新 <strong id="data-updated">讀取中</strong></span><strong id="source-state">確認中</strong><span class="sync-toggle">同步詳情</span></summary><div class="sync-details"><p>同步到網站 <strong id="cloud-synced">讀取中</strong></p><p id="sync-detail" role="status">正在檢查網站資料。</p><p id="notice">賽況以賽務確認為準。</p><p>姓名來自原始報名名單。後台已確認的比分與成績會同步，尚未發布的賽程草案不會公開。來源離線時保留最後資料。</p></div></details></section>

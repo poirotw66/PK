@@ -1,6 +1,8 @@
 declare namespace Cloudflare {
   interface Env {
     DB?: D1Database;
+    DRAFT_CUTOVER_SOURCE_REVISION?: string;
+    DRAFT_CUTOVER_SHA256?: string;
     PRIMARY_ADMIN_EMAIL?: string;
     ADDITIONAL_ADMIN_EMAIL?: string;
     ADDITIONAL_ADMIN_EMAILS?: string;

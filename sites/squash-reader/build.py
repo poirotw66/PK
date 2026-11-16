@@ -97,6 +97,16 @@ def main() -> None:
     script = script[:schedule_start] + (root / "experience.js").read_text(encoding="utf-8") + "\n" + script[render_start:]
     script = replace_once(script, "const viewNames = {", "const viewNames = {courts:'各場地賽況',")
     script = replace_once(script, "(bracket|standings|schedule)", "(bracket|standings|schedule|courts)")
+    script = replace_once(
+        script,
+        "${time(match.planned_start_at)} · ${label('courts', match.court_id)}",
+        "${match.planned_start_at ? time(match.planned_start_at) + '（僅供參考）' : '未排程'}"
+        "${match.status === 'in_progress' && match.court_id ? ' · ' + label('courts', match.court_id) : ''}",
+    )
+    script = replace_once(script, "    (!$('court').value || m.court_id === $('court').value) &&\n", "")
+    script = replace_once(script, "  options('court', data.courts.map(c => [c.id, c.name]), '全部場地');\n", "")
+    script = script.replace("可調整組別、搜尋、日期或場地。", "可調整組別、搜尋或日期。")
+    script = replace_once(script, "['division', 'date', 'court']", "['division', 'date']")
     script = replace_once(script, "  if (match.delay_active)", "  if (match.status === 'completed' && !match.result) return '已結束・成績待登錄';\n  if (match.delay_active)")
     script = replace_once(script, "  const matches = visible();", "  syncBrowseControls();\n  const matches = visible();")
     script = replace_once(script, "$('reader-navigation').open = !compactNavigation.matches;", "$('reader-navigation').open = false;")

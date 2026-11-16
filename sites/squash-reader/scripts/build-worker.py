@@ -17,6 +17,8 @@ head['snapshot_url']='/public/'+head['snapshot_url']
 from squash_scheduler.public_feed import PublicSnapshot
 schema=PublicSnapshot.model_json_schema()
 code='const ASSETS='+json.dumps(assets,separators=(',',':'))+';\nconst BOOTSTRAP='+json.dumps(head)+';\nconst SCHEMA='+json.dumps(schema)+';\n'
+prefix = f"workspaces/{head['workspace_id']}/"
+code += 'const STORAGE_PREFIX=' + json.dumps(prefix) + ';\n'
 code+=(dist/'ranking-rules.mjs').read_text().replace('export const ', 'const ')+'\n'+(root/'standings.mjs').read_text().replace('export function ', 'function ')+'\n'
 code+=(root/'live-scores.mjs').read_text().replace('export function ', 'function ')+'\n'+(root/'worker/live-scores.mjs').read_text()+'\n'+(root/'worker/cloud-publish.mjs').read_text()+'\n'+(root/'worker/api.mjs').read_text()
 (dist/'server').mkdir(exist_ok=True)

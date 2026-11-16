@@ -45,3 +45,8 @@ Repeated publications do not accumulate statistics. Existing non-cloud manual
 decisions are preserved; assigning later-round players is a separate operation.
 
 Run all reader checks with `node --test tests/*.test.mjs` after building.
+
+The reader stores published snapshots and scores in R2 under the bundled
+workspace ID. A replacement workspace starts with its own bundled schedule
+and empty live scores. The management console must publish the same match IDs
+and codes before live synchronization can resume.

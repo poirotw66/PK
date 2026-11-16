@@ -14,8 +14,7 @@ function seenScheduleStore() {
 let acknowledgedPersonal = '';
 function shortPersonalPosition(value) {
   if (!value) return '原本沒有此場比賽';
-  const court = value.court ? data.courts.find(court => court.id === value.court)?.name || '原場地已移除' : '場地待安排';
-  return `${value.start ? day(value.start).slice(5).replace('-','/') + ' ' + time(value.start,false) : '時間待通知'} · ${court}`;
+  return `${value.start ? day(value.start).slice(5).replace('-','/') + ' ' + time(value.start,false) : '時間待通知'}`;
 }
 function appendPersonalChange(target, change) {
   target.classList.add('has-personal-change');
@@ -25,9 +24,7 @@ function appendPersonalChange(target, change) {
     const destination = node('div', null, 'change-destination');
     const when = node('div');
     when.append(node('span', change.after.start ? `新時間 · ${day(change.after.start).slice(5).replace('-','/')}` : '新時間'), node('strong', change.after.start ? time(change.after.start,false) : '待通知'));
-    const where = node('div');
-    where.append(node('span', '新場地'), node('strong', change.after.court ? label('courts',change.after.court) : '待安排'));
-    destination.append(when,where);
+    destination.append(when);
     note.append(destination);
   } else note.append(node('p', '這場已移出你的個人賽程，請向賽務確認。', 'change-removed'));
   if (change.before) note.append(node('p', `原訂：${shortPersonalPosition(change.before)}`, 'change-previous'));
@@ -49,7 +46,7 @@ function syncPersonalChanges(summary, all) {
   const notice = node('section', null, 'personal-change-notice');
   notice.setAttribute('aria-label', '你的賽程異動');
   const hasNewArrangement = result.changes.some(change => change.after);
-  notice.append(node('h3', `${result.changes.length} 場${hasNewArrangement ? '比賽有新安排' : '個人賽程已調整'}`), node('p', hasNewArrangement ? '請依下方的新時間、新場地出賽。' : '以下場次已移出，請向賽務確認。'));
+  notice.append(node('h3', `${result.changes.length} 場${hasNewArrangement ? '比賽有新安排' : '個人賽程已調整'}`), node('p', hasNewArrangement ? '請確認下方場次，預定時間僅供參考。' : '以下場次已移出，請向賽務確認。'));
   const list = node('div', null, 'personal-change-list');
   for (const change of result.changes) {
     const match = all.find(match => match.id === change.id);
@@ -63,7 +60,7 @@ function syncPersonalChanges(summary, all) {
   const actions = node('div', null, 'personal-change-actions');
   const show = node('button', '查看我的完整賽程');
   show.type = 'button';
-  show.addEventListener('click', () => { for (const id of ['division','court','date']) $(id).value = ''; view = 'schedule'; filterChanged(); });
+  show.addEventListener('click', () => { for (const id of ['division','date']) $(id).value = ''; view = 'schedule'; filterChanged(); });
   const confirm = node('button', '我知道了');
   confirm.type = 'button';
   confirm.addEventListener('click', () => { store.confirm(workspace, player, current); acknowledgedPersonal = workspace+'\n'+player; render(); });
@@ -79,7 +76,7 @@ function syncPersonalChanges(summary, all) {
 function writeQueryState() {
   $('share-feedback').hidden = true;
   $('share-link').value = '';
-  const search = stateSearch({player:selectedPlayer, search:$('search').value.trim(), date:$('date').value, division:$('division').value, court:$('court').value, view});
+  const search = stateSearch({player:selectedPlayer, search:$('search').value.trim(), date:$('date').value, division:$('division').value, view});
   page=pageForView(view);
   history.replaceState(null, '', pageHref(page,search));
   applyPageUi();
@@ -90,14 +87,14 @@ function restoreQueryState() {
   selectedPlayer = state.player;
   $('search').value = state.player || state.search;
   let invalid = false;
-  for (const id of ['date', 'division', 'court']) {
+  for (const id of ['date', 'division']) {
     const exists = [...$(id).options].some(option => option.value === state[id]);
     $(id).value = exists ? state[id] : '';
     invalid ||= !exists;
   }
   page=readerPage(location.pathname,location.search,location.hash);
   view=pageInfo[page].view;
-  if (invalid) showShareFeedback('連結中的部分日期、組別或場地已不存在，已移除失效條件。');
+  if (invalid) showShareFeedback('連結中的部分日期或組別已不存在，已移除失效條件。');
   restoredQuery = true;
 }
 
@@ -110,7 +107,7 @@ function choosePlayer(name) {
   $('search').blur();
   selectedPlayer = name;
   $('search').value = name;
-  for (const id of ['division', 'court', 'date']) $(id).value = '';
+  for (const id of ['division', 'date']) $(id).value = '';
   view = 'schedule';
   filterChanged();
   focusPersonalSummary();
@@ -124,7 +121,7 @@ function searchChanged() {
   const query = $('search').value.trim();
   selectedPlayer = knownPlayers.includes(query) ? query : '';
   if (selectedPlayer) {
-    for (const id of ['division', 'court', 'date']) $(id).value = '';
+    for (const id of ['division', 'date']) $(id).value = '';
     view = 'schedule';
   }
   filterChanged();
@@ -172,7 +169,7 @@ function syncPersonalSchedule() {
 
 function resetFilters() {
   selectedPlayer = '';
-  for (const id of ['search', 'division', 'date', 'court']) $(id).value = '';
+  for (const id of ['search', 'division', 'date']) $(id).value = '';
   filterChanged();
 }
 
@@ -236,12 +233,11 @@ function syncBrowseControls() {
     }));
   }
   $('clear-search').hidden = !$('search').value;
-  $('reset-filters').hidden = !['search', 'division', 'date', 'court'].some(id => $(id).value);
+  $('reset-filters').hidden = !['search', 'division', 'date'].some(id => $(id).value);
   const context=[];
   if(['bracket','standings'].includes(page)) {
     if($('search').value)context.push('選手：'+$('search').value);
     if($('date').value)context.push('日期：'+$('date').value);
-    if($('court').value)context.push('場地：'+label('courts',$('court').value));
   }
   $('query-context').hidden=!context.length;
   $('query-context').textContent=context.join(' · ');
@@ -289,12 +285,15 @@ function schedule(matches) {
       previousTime = slotKey;
     }
     const ticket = node('article', null, 'match-ticket');
-    ticket.setAttribute('aria-label', `${time(match.planned_start_at)} ${label('courts',match.court_id)} 第 ${match.code} 場`);
+    const courtLabel = match.status === 'in_progress' && match.court_id ? label('courts', match.court_id) : '';
+    const matchLabel = `第 ${match.code} 場`;
+    ticket.setAttribute('aria-label', courtLabel ? `${matchLabel} · ${courtLabel}` : matchLabel);
     ticket.dataset.matchId = match.id;
     const head = node('div', null, 'ticket-head');
     const clock = node('time', time(match.planned_start_at, false), 'ticket-time sr-only');
     if (match.planned_start_at) clock.dateTime = match.planned_start_at;
-    head.append(clock, node('span', label('courts', match.court_id), 'court-tag'));
+    head.append(clock);
+    if (courtLabel) head.append(node('span', courtLabel, 'court-tag'));
     const competition = node('p', `${label('divisions', match.division_id)} · ${label('stages', match.stage_id)}`, 'ticket-competition');
     const players = node('div', null, 'ticket-players');
     for (const [key, side] of [['a', match.side_a], ['b', match.side_b]]) {
@@ -365,7 +364,7 @@ function arrangeMobileControls() {
 
 }
 function syncMobileControls() {
-  const count = ['division', 'court', 'date'].filter(id => $(id).value).length;
+  const count = ['division', 'date'].filter(id => $(id).value).length;
   $('mobile-filter-label').textContent = count ? `篩選賽程 · ${count}` : '篩選賽程';
   $('mobile-filters').classList.toggle('has-filters', count > 0);
   $('apply-mobile-filters').textContent = `查看 ${visible().length} 場比賽`;
@@ -399,42 +398,20 @@ $('search').addEventListener('keydown', event => {
 function renderLiveNow() {
   if (!data) return;
   $('live-now-updated').textContent = `資料更新 ${fullTimestamp(data.updated_at)}`;
-  const expandedQueues=new Set([...document.querySelectorAll('.court-next-matches[open]')].map(el=>el.dataset.court));
-  const expandedOverflow=new Set([...document.querySelectorAll('.court-queue-overflow[open]')].map(el=>el.dataset.court));
-  const cards = data.courts.map(court => {
-    const {current,upcoming}=courtMatches(data.matches,court.id);
-    const active=current[0];
-    const card = node('article', null, 'live-now-card' + (active ? ' is-playing' : ''));
+  const cards = data.courts.flatMap(court => {
+    const {current} = courtMatches(data.matches, court.id);
+    if (!current.length) return [];
+    const card = node('article', null, 'live-now-card is-playing');
     const head = node('div', null, 'live-now-card-heading');
-    head.append(node('h3', court.name), node('span', active ? '比賽中' : '目前未開賽', 'live-now-state'));
+    head.append(node('h3', court.name), node('span', '比賽中', 'live-now-state'));
     card.append(head);
-    if (active) {
-      if(current.length>1)card.append(node('p','此場地有多場標記進行中，請向賽務確認。','notice'));
-      for(const match of current){
-        const division=data.divisions.find(row=>row.id===match.division_id);
-        card.append(node('p',`${division?.name||''} · 第 ${match.code} 場`,'live-now-division'),liveScorePanel(match));
-      }
-    } else {
-      const next = upcoming.find(match=>match.side_a.resolution==='confirmed'&&match.side_b.resolution==='confirmed');
-      if (next) {const division = data.divisions.find(row => row.id === next.division_id);card.append(node('p', `待開賽・第 ${next.code} 場 · ${division?.name || ''}`, 'live-now-division'), node('p', `${next.side_a.name} 對 ${next.side_b.name}`, 'live-now-next'));}
-      else card.append(node('p', '等待管理員確認下一場開賽。', 'live-now-idle'));
+    if (current.length > 1) card.append(node('p', '此場地有多場標記進行中，請向賽務確認。', 'notice'));
+    for (const match of current) {
+      card.append(node('p', `第 ${match.code} 場 · ${label('divisions', match.division_id)}`, 'live-now-division'), liveScorePanel(match));
     }
-    if(upcoming.length){
-      const queue=node('details',null,'court-next-matches');queue.dataset.court=court.id;queue.open=expandedQueues.has(court.id);
-      queue.append(node('summary',`待賽名單 · ${upcoming.length} 場`));
-      const entry=match=>{const row=node('div',null,'court-queue-entry');row.append(node('p',`${match.called_at?'已叫號 · ':''}第 ${match.code} 場 · ${label('divisions',match.division_id)}`),node('strong',`${match.side_a.name} 對 ${match.side_b.name}`));return row;};
-      for(const match of upcoming.slice(0,3))queue.append(entry(match));
-      if(upcoming.length>3){const more=node('details',null,'court-queue-overflow');more.dataset.court=court.id;more.open=expandedOverflow.has(court.id);more.append(node('summary',`再看 ${upcoming.length-3} 場`));for(const match of upcoming.slice(3))more.append(entry(match));queue.append(more);}
-      card.append(queue);
-    }
-    const scheduleLink=node('a','查看此場地賽程 →','court-schedule-link');
-    scheduleLink.href=pageHref('schedule','?court='+encodeURIComponent(court.id));
-    card.append(scheduleLink);
-    return card;
+    return [card];
   });
-  $('live-now-courts').replaceChildren(...cards);
-  const unassigned=data.matches.filter(m=>!m.court_id&&!m.result&&['planned','ready','in_progress'].includes(m.status)).length;
-  if(unassigned){const note=node('p',`另有 ${unassigned} 場尚未安排場地，請至查詢賽程查看。`,'notice');$('live-now-courts').append(note);}
+  $('live-now-courts').replaceChildren(...(cards.length ? cards : [node('p', '目前沒有進行中的比賽。', 'live-now-idle')]));
 }
 
 let liveScoreRecords = [], liveScoreOffline = false, liveScoreFetching = false;

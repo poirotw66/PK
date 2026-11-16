@@ -152,11 +152,11 @@ export async function flushPublication() {
             throw new Error("Reader did not acknowledge publication");
         const now = new Date().toISOString();
         await db.batch([
-            db.prepare("UPDATE public_state SET ack_sequence=?,ack_version=?,synced_at=?,last_error=NULL WHERE id=1 AND ack_sequence<?").bind(result.sequence, result.version, now, result.sequence),
-            db.prepare("UPDATE public_outbox SET delivered=1 WHERE sequence<=?").bind(result.sequence),
+            db.prepare("UPDATE public_state SET ack_sequence=?,ack_version=?,synced_at=?,last_error=NULL WHERE id=1 AND dispatch_id=? AND ack_sequence<?").bind(result.sequence, result.version, now, row.dispatch_id, result.sequence),
+            db.prepare("UPDATE public_outbox SET delivered=1 WHERE sequence<=? AND EXISTS (SELECT 1 FROM public_state WHERE id=1 AND dispatch_id=?)").bind(result.sequence, row.dispatch_id),
         ]);
     }
     catch {
-        await db.prepare("UPDATE public_state SET last_error=? WHERE id=1 AND sequence=? AND ack_sequence<sequence").bind("公開網站暫時未收到更新，請重試同步；後台資料已保存。", row.sequence).run();
+        await db.prepare("UPDATE public_state SET last_error=? WHERE id=1 AND dispatch_id=? AND ack_sequence<sequence").bind("公開網站暫時未收到更新，請重試同步；後台資料已保存。", row.dispatch_id).run();
     }
 }

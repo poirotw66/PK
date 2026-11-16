@@ -13,6 +13,7 @@ type SiteSignIn = { email: string; sign_out_url: string };
 type Status = {
     imported: boolean;
     can_import: boolean;
+    can_switch_draft: boolean;
     csrf: string;
     sign_in: SiteSignIn;
 };
@@ -204,6 +205,7 @@ export default function Console({ screen = "live" }: { screen?: "live" | "schedu
             setMessage((e as Error).message);
         }
     }
+    const [switchFile, setSwitchFile] = useState<File | null>(null);
     const state = data?.state;
     const courtName = (id: string) => state?.courts.find(c => c.id === id)?.name ?? id;
     const point = (a: Match["assignment"]) => a ? `${localTime(a.start).replace("T", " ")} · ${courtName(a.court)}` : "未排程";
@@ -238,6 +240,17 @@ export default function Console({ screen = "live" }: { screen?: "live" | "schedu
     const searchIds = new Set(searchMatches(state, draft, query).map(match => match.id));
     const filtered = state.matches.filter(m => { const a = draft[m.id] ?? m.assignment; return (!day || a && localTime(a.start).startsWith(day)) && (!division || m.division === division) && (!court || a?.court === court) && (!query.trim() || searchIds.has(m.id)); }).sort((a, b) => (draft[a.id]?.start ?? a.assignment?.start ?? Infinity) - (draft[b.id]?.start ?? b.assignment?.start ?? Infinity) || courtName(draft[a.id]?.court ?? a.assignment?.court ?? "").localeCompare(courtName(draft[b.id]?.court ?? b.assignment?.court ?? "")));
     return <>{header}<main className={"workspace" + (viewMode !== "list" ? " board-workspace" : "")}><section className="heading"><div><p className="eyebrow">SCHEDULE OPERATIONS</p><h1>賽程調整</h1><p>{state.name}</p><p>點選比賽，再點綠色空檔；多場調整最後一起確認儲存。</p><a className="publication-jump" href="#schedule-publication">預覽與發布賽程 ↓</a></div><button disabled={busy || draftCount > 0} onClick={() => run(load)}>重新整理</button></section>{error}
+    {status.can_switch_draft && <section className="import-panel"><h2>切換到 226 場暫定賽程</h2><p>請選擇與公開站相同的賽程 JSON。切換後，新版比分會從零開始，還需要發布新版賽程才能同步。</p><label className="file-label">選擇 226 場賽程 JSON<input type="file" accept=".json,application/json" disabled={busy || draftCount > 0} onChange={event => setSwitchFile(event.target.files?.[0] ?? null)}/></label><button className="primary" disabled={!switchFile || busy || draftCount > 0} onClick={() => {
+        if (!switchFile || !data) return;
+        run(async () => {
+            if (switchFile.size > 512 * 1024) throw new Error("檔案不得超過 512 KB。");
+            await api("switch-draft", { base_revision: data.revision, payload: await switchFile.text() });
+            setSwitchFile(null);
+            await load();
+            setSuccess(true);
+            setMessage("已切換到 226 場暫定賽程。請發布新版賽程以恢復同步。");
+        });
+    }}>確認切換到 226 場</button></section>}
     <div className="policy"><span>08:00–17:30 開賽</span><span>賽後休息 ≥60 分鐘</span><span>每人每日 ≤5 場</span><span>只檢查已確定選手</span></div>
     {data!.issues.length > 0 && <div className="notice error">目前賽程有 {data!.issues.length} 項衝突，請先修正後再儲存。{data!.issues.map(i => <p key={i.key}>{i.message}</p>)}</div>}
     <section className="schedule-sheet"><div className="sheet-top"><div className="day-tabs" aria-label="比賽日期">{state.dates.map(d => <button key={d} className={day === d ? "selected" : ""} aria-pressed={day === d} onClick={() => setDay(d)}>{d.slice(5).replace("-", "/")}<small>{state.matches.filter(m => localTime((draft[m.id] ?? m.assignment)?.start ?? 0).startsWith(d)).length} 場</small></button>)}</div><button aria-pressed={showHistory} onClick={() => setShowHistory(!showHistory)}>異動紀錄</button></div>

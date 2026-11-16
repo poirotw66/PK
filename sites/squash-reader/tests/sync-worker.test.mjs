@@ -35,6 +35,22 @@ test('initial reads expose bundled public data with awaiting status',async()=>{
   assert.equal((await (await get(head.snapshot_url,e)).json()).matches.length,snapshot.matches.length);
   assert.equal((await get('/api/state',e)).status,404);
 });
+test('a new workspace ignores the previous schedule and score pointers',async()=>{
+  const e=cloudEnv();
+  const old={...descriptor,workspace_id:'old-workspace',version:'previous-version'};
+  await e.BUCKET.put('sync/current.json',JSON.stringify({authority:'cloud',descriptor:old}));
+  await e.BUCKET.put('live/scores.json',JSON.stringify({matches:[{match_id:'old-match'}]}));
+  assert.equal((await published(e)).workspace_id,snapshot.workspace_id);
+  const scores=await (await get('/public/live-scores.json',e)).json();
+  assert.equal(scores.schedule_version,snapshot.version);
+  assert.deepEqual(scores.matches,[]);
+  const previous=publication();
+  previous.matches.push({...previous.matches[0],id:'old-match'});
+  assert.equal((await cloud(previous,e)).status,409);
+  assert.equal((await published(e)).version,snapshot.version);
+  assert.equal((await cloud(publication(),e)).status,200);
+  assert.deepEqual((await (await e.BUCKET.get('sync/current.json')).json()).descriptor,old);
+});
 test('signed update, immutable snapshot, ETag and heartbeat',async()=>{
   const e=env();assert.equal((await post('/sync/update',snapshot,e)).status,200);
   let status=await (await get('/public/status.json',e)).json();assert.equal(status.source_state,'online');assert(status.synced_at);
@@ -59,7 +75,7 @@ test('reject older revisions and heartbeat needing a snapshot',async()=>{
 });
 test('offline source keeps the last published snapshot available',async()=>{
   const e=env();await post('/sync/update',snapshot,e);
-  const item=e.BUCKET.objects.get('sync/current.json');const state=JSON.parse(item.raw);state.last_heartbeat_at='2020-01-01T00:00:00Z';item.raw=JSON.stringify(state);
+  const item=e.BUCKET.objects.get(`workspaces/${snapshot.workspace_id}/sync/current.json`);const state=JSON.parse(item.raw);state.last_heartbeat_at='2020-01-01T00:00:00Z';item.raw=JSON.stringify(state);
   assert.equal((await (await get('/public/status.json',e)).json()).source_state,'offline');
   const head=await (await get('/public/version.json',e)).json();assert.equal((await get(head.snapshot_url,e)).status,200);
 });

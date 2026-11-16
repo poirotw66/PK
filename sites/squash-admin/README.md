@@ -296,3 +296,15 @@ sheet makes no persistent change.
 ## Source-only checkout
 
 No deployment identity or runtime secrets are included. Before local builds, create an ignored `.openai/hosting.json` with your own Sites project ID and bindings `"d1": "DB", "r2": null`. Runtime settings belong in Sites or ignored local `.dev.vars`; never commit real schedules or production credentials.
+
+## Switch to the 226-match draft
+
+The primary administrator can replace the 279-match schedule with the approved
+226-match draft. Set `DRAFT_CUTOVER_SOURCE_REVISION` to the local export's
+`source_revision` and `DRAFT_CUTOVER_SHA256` to the SHA-256 digest of that exact
+JSON file. The switch stays disabled without both settings.
+
+Open the schedule page, select the approved JSON, and confirm the switch. The
+operation archives the prior schedule, scores, and publication state in D1.
+Publish the replacement schedule after the reader is serving the same match
+IDs and codes. Remove the cutover settings when no longer needed.

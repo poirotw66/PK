@@ -1,4 +1,4 @@
-const liveScoresKey = 'live/scores.json';
+const liveScoresKey = STORAGE_PREFIX + 'live/scores.json';
 async function publishLiveScore(request, env) {
   if (!env.BUCKET) return json({error:'Storage unavailable'},503);
   const timestamp = request.headers.get('X-Sync-Time'), signature = request.headers.get('X-Sync-Signature');
@@ -12,7 +12,7 @@ async function publishLiveScore(request, env) {
   if(!exact(value,['source_id','record']) || value.source_id!==env.PUBLISH_SOURCE_ID || !validLiveScore(value.record) || Date.parse(value.record.updated_at)>Date.now()+120000)return json({error:'Invalid live score'},400);
   const {current}=await readCurrent(env);
   if(current?.authority!=='cloud'||current.cloud_source_id!==value.source_id)return json({error:'Publish the cloud schedule first'},409);
-  const stored=await env.BUCKET.get('snapshots/'+current.descriptor.version+'.json');
+  const stored=await env.BUCKET.get(STORAGE_PREFIX+'snapshots/'+current.descriptor.version+'.json');
   const snapshot=stored?await stored.json():null,record=value.record;
   const match=snapshot?.matches.find(match=>match.id===record.match_id);
   if(!match || match.status!=='in_progress' || match.started_at!==record.started_at || match.result)return json({error:'Match is no longer active'},409);
