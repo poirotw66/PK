@@ -3,7 +3,8 @@ import { database, HttpError } from "./auth";
 import type { Tournament } from "./schedule/schema";
 import { validate } from "./schedule/rules";
 import { emptyLive, envelope, transitionLive, selectableMatches } from "./publication-model";
-import { defaultScoringRules, finishedResult } from "./scoring";
+import { defaultScoringRules, finishedResult, validateResult } from "./scoring";
+import type { Game } from "./scoring";
 import { readScore } from "./score-storage";
 import { publicationDiff } from "./publication-diff";
 import type { PublicEnvelope } from "./publication-model";
@@ -43,20 +44,35 @@ export async function controlState() {
     const pendingScores = await database().prepare("SELECT s.sync_error FROM match_scores s,tournament t,json_each(t.payload,'$.matches') m WHERE t.id=1 AND s.synced_version<s.version AND s.match_id=json_extract(m.value,'$.id') AND json_extract(m.value,'$.status')='in_progress' LIMIT 1").first<{sync_error:string|null}>();
     const published = row ? JSON.parse(row.payload) as PublicationPayload : null;
     const acknowledged = row?.ack_sequence ? await database().prepare("SELECT payload FROM public_outbox WHERE sequence=? AND delivered=1").bind(row.ack_sequence).first<{payload:string}>() : null;
-    const publication_review = publicationDiff(acknowledged ? JSON.parse(acknowledged.payload) as PublicEnvelope : null, main.state);
+    const baseline = acknowledged ? JSON.parse(acknowledged.payload) as PublicEnvelope : null;
+    if (baseline?.matches.some(match => match.status === "in_progress")) {
+        const old = row?.schedule_revision === baseline.schedule_revision ? published?.schedule
+            : await database().prepare("SELECT payload FROM revisions WHERE id=?").bind(baseline.schedule_revision)
+                .first<{ payload: string }>().then(revision => revision ? JSON.parse(revision.payload) as Tournament : null);
+        const assignments = new Map(old?.matches.map(match => [match.id, match.assignment]));
+        for (const match of baseline.matches) {
+            if (match.status === "in_progress" && assignments.has(match.id))
+                match.court_id = assignments.get(match.id)?.court ?? null;
+        }
+    }
+    const publication_review = publicationDiff(baseline, main.state);
+    const describe = (match: Tournament["matches"][number]) => ({
+        id: match.id, code: match.code, division: match.division, side_a: match.side_a, side_b: match.side_b,
+        planned_court: main.state.courts.find(court => court.id === match.assignment?.court)?.name ?? null,
+        result: match.result ?? null, scoring_rules: match.scoring_rules ?? defaultScoringRules,
+        planned_start: match.assignment ? new Date(match.assignment.start * 60000).toISOString() : null,
+    });
+    const queue = selectableMatches(main.state, published).map(({ match, eligible, blocked_reason }) => ({ ...describe(match), eligible, blocked_reason }));
     return { dates: main.state.dates, publication_review, revision: main.revision, sequence: row?.sequence ?? 0, published_revision: row?.schedule_revision ?? null,
         has_unpublished: !row || JSON.stringify(published?.schedule.matches.map(m => ({ id: m.id, assignment: m.assignment, status: m.status }))) !== JSON.stringify(main.state.matches.map(m => ({ id: m.id, assignment: m.assignment, status: m.status }))),
         published_at: row?.published_at ?? null, live_updated_at: row?.live_updated_at ?? null, synced_at: row?.synced_at ?? null,
         pending: !!pendingScores || !!row && row.ack_sequence < row.sequence, error: row?.last_error ?? pendingScores?.sync_error ?? null, public_url: env.READER_ORIGIN ?? null,
+        queue,
         courts: main.state.courts.map(court => {
             const live = published?.live.courts[court.id];
             const current = published?.schedule.matches.find(match => match.id === live?.match_id);
-            const describe = (match: typeof current) => match ? { id: match.id, code: match.code, division: match.division, side_a: match.side_a, side_b: match.side_b,
-                planned_court: main.state.courts.find(c=>c.id===match.assignment?.court)?.name??null,
-                result: match.result ?? null, scoring_rules: match.scoring_rules ?? defaultScoringRules,
-                planned_start: match.assignment ? new Date(match.assignment.start * 60000).toISOString() : null } : null;
-            return { id: court.id, name: court.name, current: current ? { ...describe(current)!, started_at: live?.started_at } : null,
-                queue: selectableMatches(main.state, published, court.id).map(({match, eligible, blocked_reason}) => ({ ...describe(match)!, eligible, blocked_reason })) };
+            return { id: court.id, name: court.name, current: current ? { ...describe(current), started_at: live?.started_at } : null,
+                queue: selectableMatches(main.state, published, court.id).map(({ match, eligible, blocked_reason }) => ({ ...describe(match), eligible, blocked_reason })) };
         }) };
 }
 export async function queuePublication(revision: string, sequence: number, actor: string) {
@@ -80,24 +96,41 @@ export async function queuePublication(revision: string, sequence: number, actor
 export async function queueLive(input: {
     revision: string;
     sequence: number;
-    action: "start" | "end" | "cancel";
-    court_id: string;
+    action: "start" | "end" | "cancel" | "record-result";
+    court_id?: string;
     match_id: string;
     reason?: string;
     score_version?: number;
+    games?: Game[];
 }, actor: string) {
     const db = database(), main = await canonical(), prior = await publicationRow();
     if (!prior)
         throw new HttpError(409, "請先發布一版賽程，才能操作現場賽況。");
     if (main.revision !== input.revision || prior.sequence !== input.sequence)
         throw new HttpError(409, "場地或賽程已更新，請重新整理。");
-    let result;
-    if (input.action === "end") {
-        if (input.score_version === undefined) throw new HttpError(400, "請先進入計分模式並確認成績。");
+    let result, scoreVersion: number | undefined;
+    const match = main.state.matches.find(row => row.id === input.match_id);
+    if (input.action === "end" || (input.action === "record-result" && match?.status === "in_progress")) {
+        if (input.score_version === undefined) throw new HttpError(400, "請先讀取最新比分。");
         const score = await readScore(input.match_id);
         if (score.version !== input.score_version) throw new HttpError(409, "比分已更新，請重新確認成績。");
-        try { result = finishedResult(score.score); }
-        catch (error) { throw new HttpError(409, (error as Error).message); }
+        scoreVersion = score.version;
+        if (input.action === "end") {
+            try { result = finishedResult(score.score); }
+            catch (error) { throw new HttpError(409, (error as Error).message); }
+        }
+    }
+    if (input.action === "record-result") {
+        if (!match || !input.games) throw new HttpError(400, "請選擇場次並輸入局分。");
+        const aWins = input.games.filter(game => game.side_a > game.side_b).length;
+        try {
+            result = validateResult({
+                rules: match.scoring_rules ?? defaultScoringRules,
+                winner: aWins * 2 > input.games.length ? "a" : "b",
+                games: input.games,
+            });
+        }
+        catch (error) { throw new HttpError(400, error instanceof Error ? error.message : "局分格式無效。"); }
     }
     let changed;
     try {
@@ -109,14 +142,14 @@ export async function queueLive(input: {
     const now = new Date().toISOString(), id = crypto.randomUUID(), revision = crypto.randomUUID(), next = prior.sequence + 1;
     const payload = JSON.stringify(changed.publication), canonicalPayload = JSON.stringify(changed.main);
     const outgoing = dispatchPayload(changed.publication, { sequence: next, schedule_revision: prior.schedule_revision, published_at: prior.published_at, live_updated_at: now }, now);
-    const scoreGuard = input.action === "end" ? " AND EXISTS (SELECT 1 FROM match_scores WHERE match_id=? AND version=?)" : "";
+    const scoreGuard = scoreVersion !== undefined ? " AND EXISTS (SELECT 1 FROM match_scores WHERE match_id=? AND version=?)" : "";
     const mutation = db.prepare("UPDATE tournament SET revision=?,payload=? WHERE id=1 AND revision=? AND EXISTS (SELECT 1 FROM public_state WHERE id=1 AND sequence=?)" + scoreGuard);
     const parameters = [revision, canonicalPayload, input.revision, input.sequence];
     const results = await db.batch([
-        mutation.bind(...parameters, ...(input.action === "end" ? [input.match_id, input.score_version!] : [])),
+        mutation.bind(...parameters, ...(scoreVersion !== undefined ? [input.match_id, scoreVersion] : [])),
         db.prepare("UPDATE public_state SET sequence=?,dispatch_id=?,payload=?,live_updated_at=?,last_error=NULL WHERE id=1 AND sequence=? AND EXISTS (SELECT 1 FROM tournament WHERE id=1 AND revision=?)").bind(next, id, payload, now, input.sequence, revision),
         ...(input.action === "start" ? [db.prepare("INSERT INTO match_scores (match_id,version,payload,updated_at,actor) SELECT ?,1,?,?,? FROM public_state WHERE id=1 AND dispatch_id=? ON CONFLICT(match_id) DO UPDATE SET version=match_scores.version+1,payload=excluded.payload,updated_at=excluded.updated_at,actor=excluded.actor").bind(input.match_id, JSON.stringify({rules:changed.main.matches.find(m=>m.id===input.match_id)?.scoring_rules ?? defaultScoringRules,points:[]}), now, actor, id)] : []),
-        db.prepare("INSERT INTO revisions (id,parent,actor,reason,created,payload,changes) SELECT ?,?,?,?,?,?,'[]' FROM public_state WHERE id=1 AND dispatch_id=?").bind(revision, input.revision, actor, `Live ${input.action}: ${input.court_id} / ${input.match_id}${input.reason ? ' / ' + input.reason : ''}`, Date.now(), canonicalPayload, id),
+        db.prepare("INSERT INTO revisions (id,parent,actor,reason,created,payload,changes) SELECT ?,?,?,?,?,?,'[]' FROM public_state WHERE id=1 AND dispatch_id=?").bind(revision, input.revision, actor, `Live ${input.action}: ${input.court_id ? input.court_id + " / " : ""}${input.match_id}${input.reason ? ' / ' + input.reason : ''}`, Date.now(), canonicalPayload, id),
         db.prepare("INSERT INTO public_outbox (id,sequence,payload,actor,action,created,delivered) SELECT ?,?,?,?,?,?,0 FROM public_state WHERE id=1 AND dispatch_id=?").bind(id, next, outgoing, actor, input.action, Date.now(), id),
     ]);
     if (results[0].meta.changes !== 1)

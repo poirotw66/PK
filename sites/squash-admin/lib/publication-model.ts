@@ -38,9 +38,10 @@ export function emptyLive(state: Tournament): LiveState {
     return { courts: Object.fromEntries(state.courts.map(court => [court.id, { match_id: null, started_at: null, previous_status: null }])), starts: {} };
 }
 export function envelope(payload: PublicationPayload, metadata: Omit<PublicEnvelope, "matches">): PublicEnvelope {
+    const runningCourts = new Map(Object.entries(payload.live.courts).flatMap(([court, live]) => live.match_id ? [[live.match_id, court] as const] : []));
     return { ...metadata, matches: payload.schedule.matches.map(match => ({
             id: match.id, code: match.code, division: match.division, side_a: match.side_a, side_b: match.side_b, status: match.status,
-            court_id: match.assignment?.court ?? null,
+            court_id: runningCourts.get(match.id) ?? match.assignment?.court ?? null,
             planned_start_at: match.assignment ? new Date(match.assignment.start * 60000).toISOString() : null,
             started_at: payload.live.starts[match.id] ?? null,
             ...(match.result ? { result: match.result } : {}),
@@ -62,54 +63,61 @@ export function selectableMatches(main: Tournament, published: PublicationPayloa
         });
 }
 export function transitionLive(main: Tournament, published: PublicationPayload, input: {
-    action: "start" | "end" | "cancel";
-    court_id: string;
+    action: "start" | "end" | "cancel" | "record-result";
+    court_id?: string;
     match_id: string;
     result?: ScoringResult;
 }, now: string) {
-    const current = published.live.courts[input.court_id];
-    if (!current)
-        throw new Error("場地不存在。");
     const canonical = structuredClone(main), next = structuredClone(published);
     const match = canonical.matches.find(row => row.id === input.match_id), visible = next.schedule.matches.find(row => row.id === input.match_id);
     if (!match || !visible)
         throw new Error("場次不在已發布賽程內。");
-    if (input.action === "start") {
-        if (current.match_id)
-            throw new Error("此場地已有比賽進行中，請先結束或撤銷開賽。");
+    const recording = input.action === "record-result";
+    if (recording && !input.result) throw new Error("請輸入完賽局分。");
+    if (input.action === "start" || (recording && match.status !== "in_progress")) {
         if (!["planned", "ready"].includes(match.status) || !["planned", "ready"].includes(visible.status))
             throw new Error("這場比賽已開打或已結束。");
         if (!match.assignment || !visible.assignment || match.assignment.court !== visible.assignment.court
             || match.assignment.start !== visible.assignment.start)
             throw new Error("這場有未發布的調整，請先發布最新賽程。");
         if (match.players.length !== 2)
-            throw new Error("雙方選手尚未確定，不能標記開賽。");
+            throw new Error("雙方選手尚未確定，不能登錄賽況。");
+        if (recording) {
+            match.result = validateResult(input.result);
+            visible.result = structuredClone(match.result);
+            match.status = visible.status = "completed";
+            return { main: canonical, publication: next };
+        }
+        const courtId = input.court_id;
+        const current = courtId ? published.live.courts[courtId] : undefined;
+        if (!courtId || !current) throw new Error("請選擇現有的開賽場地。");
+        if (current.match_id) throw new Error("此場地已有比賽進行中，請選擇空場。");
         for (const row of Object.values(published.live.courts)) {
-            if (!row.match_id)
-                continue;
+            if (!row.match_id) continue;
             const active = main.matches.find(other => other.id === row.match_id);
             if (active?.players.some(id => match.players.includes(id)))
                 throw new Error("選手已在其他場地比賽，請先確認現場狀態。");
         }
-        if (match.assignment.court !== input.court_id)
-            throw new Error("這場安排在其他場地，請先到賽程調整更換場地並發布。");
-        next.live.courts[input.court_id] = { match_id: match.id, started_at: now, previous_status: match.status as "planned" | "ready" };
+        const previousStatus = match.status === "ready" ? "ready" : "planned";
+        next.live.courts[courtId] = { match_id: match.id, started_at: now, previous_status: previousStatus };
         next.live.starts[match.id] = now;
         match.status = "in_progress";
         visible.status = "in_progress";
     }
     else {
-        if (current.match_id !== match.id || match.status !== "in_progress")
+        const courtId = input.court_id ?? (recording ? Object.keys(published.live.courts).find(id => published.live.courts[id].match_id === match.id) : undefined);
+        const current = courtId ? published.live.courts[courtId] : undefined;
+        if (!courtId || !current || current.match_id !== match.id || match.status !== "in_progress")
             throw new Error("場地狀態已改變，請重新整理。");
-        if (input.action === "end" && input.result) {
+        if ((input.action === "end" || recording) && input.result) {
             match.result = validateResult(input.result);
             visible.result = structuredClone(match.result);
         }
-        match.status = input.action === "end" ? "completed" : current.previous_status ?? "planned";
+        match.status = input.action === "cancel" ? current.previous_status ?? "planned" : "completed";
         visible.status = match.status;
         if (input.action === "cancel")
             delete next.live.starts[match.id];
-        next.live.courts[input.court_id] = { match_id: null, started_at: null, previous_status: null };
+        next.live.courts[courtId] = { match_id: null, started_at: null, previous_status: null };
     }
     return { main: canonical, publication: next };
 }

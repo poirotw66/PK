@@ -5,6 +5,12 @@ reader source. It starts with a fresh Git history. Original rosters, player name
 PDFs, spreadsheets, event workspaces, public snapshots, production identities,
 credentials, build output, and operational history are not included.
 
+## Live sites
+
+- [Tournament administration](https://pk-squash-admin.poirotw66.chatgpt.site/) — requires an authorized ChatGPT account.
+- [Manual iPad scoring](https://pk-squash-admin.poirotw66.chatgpt.site/ipad) — requires an authorized ChatGPT account.
+- [Public schedule and scores](https://pk-squash-schedule.poirotw66.chatgpt.site/schedule) — no sign-in required.
+
 ## Run an anonymous demo
 
 Requires Python 3.13 and uv:

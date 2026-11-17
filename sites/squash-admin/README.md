@@ -245,9 +245,10 @@ availability board, draft editing, history and publication review. Both direct
 routes retain platform and administrator authentication. Navigating from an
 unsaved schedule draft to scoring is blocked until it is saved or discarded.
 
-Court selectors contain only matches assigned to that court in the published
-schedule; before first publication, they use the canonical schedule. Unpublished
-moves remain blocked on the old court until published. The live mutation also
+Search for a published match by number or player, then select an available
+court at start. The actual court appears on the live scoreboard without
+changing the scheduled assignment. Publish schedule edits before starting an
+affected match. The live mutation also
 rejects cross-court starts: use schedule editing and publication to move a match.
 
 Completed board/list matches use blue with a completion label; in-progress board
@@ -308,3 +309,17 @@ Open the schedule page, select the approved JSON, and confirm the switch. The
 operation archives the prior schedule, scores, and publication state in D1.
 Publish the replacement schedule after the reader is serving the same match
 IDs and codes. Remove the cutover settings when no longer needed.
+
+## Manual scoring on an older iPad
+
+Open `/ipad` in Safari and sign in as a tournament administrator. Select the
+match by number or player, then select an available court to start. Use the two large buttons to save points, and use **復原上一分**
+to undo a mistake. The page refreshes only when the operator asks for data or
+performs an action. Publish the initial schedule in the full console before
+starting matches. The manual page uses the same live and score APIs, and the
+server still synchronizes saved points to the reader.
+
+Use **直接登錄完賽** to enter a full result from paper scores. Enter both
+players' points for each played game and leave unplayed games blank. You can
+record a published match without first marking it in progress, or replace
+an active match's point-by-point tally with the confirmed game scores.

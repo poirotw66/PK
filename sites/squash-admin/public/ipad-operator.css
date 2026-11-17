@@ -1,0 +1,31 @@
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: #eef2ef; color: #17372d; font: 18px -apple-system, BlinkMacSystemFont, sans-serif; }
+main { max-width: 700px; margin: 0 auto; padding: 24px 18px 40px; }
+header { border-bottom: 2px solid #a9c1b4; margin-bottom: 18px; }
+h1 { font-size: 36px; margin: 0; }
+h2 { font-size: 23px; }
+p { line-height: 1.45; }
+.eyebrow { font-weight: bold; font-size: 14px; letter-spacing: .08em; }
+label { display: block; font-weight: bold; margin: 14px 0 5px; }
+button, select { font: inherit; color: #17372d; background: #fff; border: 2px solid #688678; border-radius: 8px; min-height: 55px; padding: 10px; }
+select, .wide { display: block; width: 100%; }
+.wide { margin: 9px 0; }
+button { font-weight: bold; }
+button:disabled { opacity: .55; }
+.primary { color: #fff; background: #205943; border-color: #205943; }
+.pair button { display: inline-block; width: 47%; min-height: 84px; font-size: 24px; margin: 3px 1%; }
+.points { font-size: 56px; font-weight: bold; margin: 6px 0; text-align: center; }
+.names { text-align: center; margin: 4px 0 12px; }
+#feedback { padding: 12px; border-left: 5px solid #688678; background: #fff; }
+#feedback[data-kind="success"] { border-color: #18754b; }
+#feedback[data-kind="error"] { color: #852820; border-color: #a43a33; }
+#live, #queue { margin-top: 16px; border-top: 1px solid #a9c1b4; }
+.note { color: #425c51; font-size: 16px; }
+a { color: #174d38; }
+#result-entry { border-top: 2px solid #688678; margin-top: 16px; }
+.game-row { margin: 12px 0; border: 1px solid #a9c1b4; padding: 8px; }
+.game-row label { display: inline-block; width: 47%; margin: 3px 1%; }
+.game-row input { display: block; width: 100%; min-height: 55px; margin-top: 4px; font: inherit; padding: 8px; }
+#result-feedback[data-kind="error"] { color: #852820; font-weight: bold; }
+#match-search { display: block; width: 100%; min-height: 55px; font: inherit; padding: 10px; border: 2px solid #688678; border-radius: 8px; }

@@ -10,10 +10,11 @@ export type Side = "a" | "b";
 export type Game = { side_a: number; side_b: number };
 export type Score = { rules: ScoringRules; points: Side[] };
 export const scoreSchema = z.object({ rules: scoringRulesSchema, points: z.array(z.enum(["a", "b"])).max(4000) }).strict();
+export const gameSchema = z.object({ side_a: z.number().int().min(0).max(999), side_b: z.number().int().min(0).max(999) }).strict();
 export const resultSchema = z.object({
     rules: scoringRulesSchema,
     winner: z.enum(["a", "b"]),
-    games: z.array(z.object({ side_a: z.number().int().min(0).max(999), side_b: z.number().int().min(0).max(999) }).strict()).min(2).max(5),
+    games: z.array(gameSchema).min(2).max(5),
 }).strict();
 export type ScoringResult = z.infer<typeof resultSchema>;
 export function tally(score: Score) {

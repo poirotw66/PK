@@ -36,6 +36,10 @@ function syncPersonalChanges(summary, all) {
   const player = selectedPlayer, workspace = data.workspace_id;
   const current = playerSchedule(data, player);
   const result = store.check(workspace, player, current);
+  // The live court can differ from the scheduled assignment. It is not a schedule change.
+  result.changes = result.changes.filter(change => !change.before || !change.after || change.before.start !== change.after.start)
+    .map(change => ({ ...change, before: change.before && { ...change.before, court:null },
+      after: change.after && { ...change.after, court:null } }));
   personalChanges = new Map(result.changes.map(change => [change.id, change]));
   if (!result.changes.length) {
     if (!result.persistent) summary.append(node('p', '提醒只保留在這次開啟的頁面；離開後會重新開始比較。', 'personal-memory-note'));

@@ -235,7 +235,7 @@ export default function Console({ screen = "live" }: { screen?: "live" | "schedu
     </main></>;
     if (!state)
         return <>{header}<main className="onboarding">{error}<p>正在載入賽程…</p><button onClick={() => run(load)}>重新載入</button></main></>;
-    if (screen === "live") return <>{header}<main className="workspace live-workspace"><section className="heading"><div><h1>現場計分</h1><p>{state.name}</p><p>找到場地，選擇該場地的比賽，就能開始計分。</p></div><button disabled={busy} onClick={() => run(load)}>重新整理</button></section>{error}<LiveControl mode="live" revision={data!.revision} draftCount={0} api={api} onChanged={load}/></main></>;
+    if (screen === "live") return <>{header}<main className="workspace live-workspace"><section className="heading"><div><h1>現場計分</h1><p>{state.name}</p><p>依場號或選手找比賽，確認開賽時再選空場。</p><a href="/ipad">舊款 iPad 操作頁</a></div><button disabled={busy} onClick={() => run(load)}>重新整理</button></section>{error}<LiveControl mode="live" revision={data!.revision} draftCount={0} api={api} onChanged={load}/></main></>;
     const divisions = [...new Set(state.matches.map(m => m.division))];
     const searchIds = new Set(searchMatches(state, draft, query).map(match => match.id));
     const filtered = state.matches.filter(m => { const a = draft[m.id] ?? m.assignment; return (!day || a && localTime(a.start).startsWith(day)) && (!division || m.division === division) && (!court || a?.court === court) && (!query.trim() || searchIds.has(m.id)); }).sort((a, b) => (draft[a.id]?.start ?? a.assignment?.start ?? Infinity) - (draft[b.id]?.start ?? b.assignment?.start ?? Infinity) || courtName(draft[a.id]?.court ?? a.assignment?.court ?? "").localeCompare(courtName(draft[b.id]?.court ?? b.assignment?.court ?? "")));

@@ -9,6 +9,7 @@ import { review, validate } from "../../../lib/schedule/rules";
 import { controlState, queuePublication, queueLive, flushPublication } from "../../../lib/publication";
 
 import { flushScores } from "../../../lib/score-publication";
+import { gameSchema, tally } from "../../../lib/scoring";
 import { readScore, savePoint } from "../../../lib/score-storage";
 import { chatGPTSignOutPath } from "../../chatgpt-auth";
 
@@ -66,7 +67,7 @@ async function handle(request: Request) {
     const path = new URL(request.url).pathname.replace(/^\/api\//, "");
     if (path === "sync-service") return json(await retryPublicSync(request));
     const db = database();
-    if (request.method === "GET" && path === "status") {
+    if (request.method === "GET" && (path === "status" || path === "ipad")) {
         const user = await identity();
         const account = await findAdmin(user);
         const signIn = { email: user.email, sign_out_url: chatGPTSignOutPath("/") };
@@ -74,9 +75,14 @@ async function handle(request: Request) {
             return json({ error: "此帳號沒有管理權限。", sign_in: signIn }, 403);
         const imported = await db.prepare("SELECT revision, json_array_length(payload, '$.matches') AS matches FROM tournament WHERE id=1").first<{ revision: string; matches: number }>();
         const active = await readSession(request, account.owner) ?? await createSession(request, account.owner);
+        const headers: Record<string, string> = "setCookie" in active ? { "Set-Cookie": active.setCookie } : {};
+        if (path === "ipad") {
+            const { courts, dates, queue, revision, sequence, published_revision } = await controlState();
+            return json({ csrf: active.csrf, courts, dates, queue, revision, sequence, published_revision }, 200, headers);
+        }
         return json(
             { imported: !!imported, can_import: account.kind === "primary", can_switch_draft: account.kind === "primary" && canReplaceDraft(imported), csrf: active.csrf, sign_in: signIn },
-            200, "setCookie" in active ? { "Set-Cookie": active.setCookie } : {},
+            200, headers,
         );
     }
     if (request.method !== "GET")
@@ -88,7 +94,8 @@ async function handle(request: Request) {
     if (request.method === "GET") {
         if (path === "score") {
             const matchId = z.string().min(1).max(100).parse(new URL(request.url).searchParams.get("match_id"));
-            return json(await readScore(matchId));
+            const score = await readScore(matchId);
+            return json({ ...score, summary: tally(score.score) });
         }
         if (path === "control") return json(await controlState());
         if (path === "state") {
@@ -130,7 +137,7 @@ async function handle(request: Request) {
         const input = z.object({ match_id:z.string().min(1).max(100), version:z.number().int().nonnegative(), action:z.enum(["a","b","undo"]) }).strict().parse(await body(request));
         const saved = await savePoint(input.match_id, input.version, input.action, account.actor);
         syncScoreInBackground(input.match_id);
-        return json({...saved, sync_pending:true, sync_error:null});
+        return json({...saved, summary:tally(saved.score), sync_pending:true, sync_error:null});
     }
     if (path === "publish") {
         const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative()}).strict().parse(await body(request));
@@ -140,8 +147,10 @@ async function handle(request: Request) {
         return json(await controlState());
     }
     if (path === "live") {
-        const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative(),action:z.enum(["start","end","cancel"]),court_id:z.string().min(1),match_id:z.string().min(1),reason:z.string().trim().max(300).optional(),score_version:z.number().int().nonnegative().optional()}).strict().parse(await body(request));
+        const input=z.object({revision:z.string().min(1),sequence:z.number().int().nonnegative(),action:z.enum(["start","end","cancel","record-result"]),court_id:z.string().min(1).optional(),match_id:z.string().min(1),reason:z.string().trim().max(300).optional(),score_version:z.number().int().nonnegative().optional(),games:z.array(gameSchema).min(2).max(5).optional()}).strict().parse(await body(request));
+        if (input.action !== "record-result" && !input.court_id) throw new HttpError(400, "請選擇場地。");
         if(input.action==="cancel"&&!input.reason)throw new HttpError(400,"撤銷開賽需要填寫原因。");
+        if (input.action !== "record-result" && input.games) throw new HttpError(400, "請用直接登錄完賽功能送出局分。");
         await queueLive(input,account.actor);
         await flushPublication();
         await flushScores();
