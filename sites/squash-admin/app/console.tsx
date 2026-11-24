@@ -211,12 +211,12 @@ export default function Console({ screen = "live" }: { screen?: "live" | "schedu
     const point = (a: Match["assignment"]) => a ? `${localTime(a.start).replace("T", " ")} · ${courtName(a.court)}` : "未排程";
     const error = message ? <div className={"notice " + (success ? "success" : "error")} role="status">{message}</div> : null;
     const signIn = blockedSignIn ?? status?.sign_in;
-    const switchAccount = signIn && <p>目前的 ChatGPT 帳號為 <strong>{signIn.email}</strong>。 <a href={signIn.sign_out_url} target="_top">切換 ChatGPT 帳號</a></p>;
+    const switchAccount = signIn && <p>目前登入身分為 <strong>{signIn.email}</strong>。 <a href={signIn.sign_out_url} target="_top">重新登入</a></p>;
     const header = <><header className={status && viewMode !== "list" ? "compact-header" : undefined}><a className="wordmark" href="/">PK<span>賽程管理台</span></a><div className="header-right"><span className="private-badge">私人管理後台</span>{status && <><span className="account">{status.sign_in.email}</span><button disabled={busy || draftCount > 0} title={draftCount ? "請先儲存或清空草案" : ""} onClick={() => run(async () => { await api("logout", {}); window.open(status.sign_in.sign_out_url, "_top"); })}>登出</button></>}</div></header>{status && <nav className="admin-navigation" aria-label="管理功能"><a href="/live" aria-current={screen === "live" ? "page" : undefined} aria-disabled={busy || draftCount > 0} onClick={event => { if (busy || draftCount) { event.preventDefault(); setMessage("請先儲存或清空草案，再切換頁面。"); } }}><strong>現場計分</strong><span>開賽與記分</span></a><a href="/schedule" aria-current={screen === "schedule" ? "page" : undefined}><strong>賽程調整</strong><span>調整與發布</span></a></nav>}</>;
     if (blockedSignIn)
         return <>{header}<main className="onboarding"><h1>此帳號沒有管理權限</h1>{switchAccount}<p>請改用已獲授權的 ChatGPT 帳號登入管理台。</p></main></>;
     if (!status)
-        return <>{header}<main className="onboarding"><h1>正在開啟操作台</h1>{error}{!message && <p>安全連線至賽程資料庫…</p>}{message && <><button onClick={() => run(load)}>重新連線</button> <a href="/signin-with-chatgpt?return_to=%2F" target="_top">重新登入 ChatGPT</a></>}</main></>;
+        return <>{header}<main className="onboarding"><h1>正在開啟操作台</h1>{error}{!message && <p>安全連線至賽程資料庫…</p>}{message && <><button onClick={() => run(load)}>重新連線</button> <a href="/temporary-login" target="_top">重新登入</a></>}</main></>;
     if (!status.imported)
         return <>{header}<main className="onboarding"><p className="eyebrow">SCHEDULE OPERATIONS</p><h1>賽程匯入</h1><p className="intro">賽程集中保存，調整前先檢查，確認後才更新。</p>{error}
     {switchAccount}

@@ -323,3 +323,18 @@ Use **直接登錄完賽** to enter a full result from paper scores. Enter both
 players' points for each played game and leave unplayed games blank. You can
 record a published match without first marking it in progress, or replace
 an active match's point-by-point tally with the confirmed game scores.
+
+## Temporary password access
+
+Set ADMIN_AUTH_MODE=password, TEMP_ADMIN_PASSWORD_HASH, and
+TEMP_ADMIN_EXPIRES_AT in the Sites runtime settings to pause ChatGPT identity
+and use /temporary-login. The hash format is
+pbkdf2_sha256$100000$<16-byte salt in hex>$<32-byte SHA-256 digest in hex>.
+Store the hash as a secret. The expiry is an ISO UTC timestamp.
+
+Temporary sessions may manage schedules and scores, but cannot import or
+replace the tournament. Existing administrator records stay unchanged.
+Sessions expire after 30 idle minutes or eight hours, and the configured expiry
+also invalidates active sessions. Login attempts share a five-per-minute limit.
+Change the hash to revoke all temporary sessions. Set ADMIN_AUTH_MODE=chatgpt
+and redeploy to restore ChatGPT login; remove the temporary hash and expiry.

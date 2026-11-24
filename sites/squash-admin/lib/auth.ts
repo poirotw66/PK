@@ -1,3 +1,4 @@
+import { passwordMode, temporaryOwner } from "./temporary-access";
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
 export class HttpError extends Error {
@@ -24,6 +25,7 @@ type Admin = {
     username: string | null;
 };
 export async function findAdmin(user: Awaited<ReturnType<typeof identity>>) {
+    if (passwordMode()) return user.userId === temporaryOwner() ? { owner:user.userId, kind:"additional" as const, actor:"Temporary password operator" } : null;
     const db = database();
     const primary = await db.prepare("SELECT owner,username FROM administrator WHERE id=1").first<Admin>();
     const email = user.email.trim().toLowerCase();

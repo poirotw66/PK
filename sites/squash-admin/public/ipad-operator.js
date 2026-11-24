@@ -115,6 +115,7 @@
         byId('date').disabled = busy;
         byId('match').disabled = busy;
         byId('refresh').disabled = busy;
+        byId('logout').disabled = busy || !csrf;
         byId('read-score').disabled = busy;
         var canAct = !busy && !resultMatch && control && control.published_revision && queuedMatch();
         byId('match-search').disabled = busy;
@@ -300,6 +301,9 @@
         });
     }
 
+    byId('logout').onclick = function () {
+        send(this, 'logout', {}, function () { window.location.assign('/temporary-login'); });
+    };
     byId('refresh').onclick = refresh;
     byId('court').onchange = function () { resultMatch = null; score = null; fillQueue(); render(); if (activeMatch()) loadScore(); };
     byId('date').onchange = function () { byId('match-search').value = ''; resultMatch = null; fillQueue(); render(); };

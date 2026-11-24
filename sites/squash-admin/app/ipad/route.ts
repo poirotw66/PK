@@ -18,7 +18,7 @@ export async function GET() {
     <header><p class="eyebrow">PK 壁球賽務</p><h1>現場計分</h1><p>舊款 iPad 手動操作版</p></header>
     <button id="refresh" class="wide">重新整理賽程</button>
     <p id="feedback" role="status" aria-live="polite">正在讀取賽程…</p>
-    <a id="signin" href="/signin-with-chatgpt?return_to=%2Fipad" hidden>重新登入 ChatGPT</a>
+    <a id="signin" href="/temporary-login" hidden>重新登入</a>
     <section id="operator" hidden aria-label="場次與比分">
         <label for="court">進行中計分</label><select id="court"></select>
         <div id="queue" hidden>
@@ -59,6 +59,7 @@ export async function GET() {
     </section>
     <p class="note">加分會立即存入管理台。公開比分由伺服器同步；這個頁面不會自動更新。</p>
     <p><a href="/live">返回完整管理台</a></p>
+    <button id="logout" class="wide">登出</button>
     <noscript>請在 Safari 設定中啟用 JavaScript，才能使用計分。</noscript>
 </main>
 </body>
