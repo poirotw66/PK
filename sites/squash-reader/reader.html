@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-type="software" data-radius="soft">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>壁球賽程查詢 · 模擬示範</title>
   <meta name="description" content="輸入姓名找到你的壁球賽程，查看場次、時間、積分與晉級圖。模擬示範，非正式公告。">
+  <meta name="page-type" content="software"><meta name="site-kind" content="software"><meta name="theme-color" content="#152e29">
   <meta name="robots" content="noindex, nofollow">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231b433b'/%3E%3Cpath d='M7 7h18v18H7zM7 14h18M16 14v11' fill='none' stroke='%23d5ed97' stroke-width='2'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/live.css"><link rel="stylesheet" href="/experience.css"><link rel="stylesheet" href="/board.css">
   <link rel="stylesheet" href="/mobile.css">
-  <link rel="stylesheet" href="/readability.css"><link rel="stylesheet" href="/pages.css">
+  <link rel="stylesheet" href="/readability.css"><link rel="stylesheet" href="/pages.css"><link rel="stylesheet" href="/court-theme.css">
   <script type="module" src="/live.mjs"></script>
 </head>
 <body class="schedule-first" data-page="schedule">
@@ -21,7 +22,7 @@
   <main class="sheet" id="reader-top" tabindex="-1">
     <section class="match-hero" aria-labelledby="hero-title">
       <div class="hero-copy"><h1 id="hero-title">預定時間</h1><p id="event-name" class="event-name">壁球賽事</p><p id="page-description" class="page-description">輸入選手姓名或場號，查看當日預定時間與完賽成績。</p><span class="page-disclaimer">模擬示範・以主辦公告為準</span></div>
-
+      <div id="event-overview" class="event-overview" aria-label="賽事概況"><div><strong id="overview-matches">—</strong><span>場比賽</span></div><div><strong id="overview-divisions">—</strong><span>個組別</span></div></div>
     </section>
     <p id="error" class="notice" role="status" hidden></p>
 

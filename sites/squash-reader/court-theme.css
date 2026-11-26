@@ -1,0 +1,107 @@
+/* Court club: one visual system for schedules, draws and confirmed results. */
+:root{--pk-ink:#152e29;--pk-green:#1e503f;--pk-lime:#d8ee92;--pk-paper:#f2f4f1;--pk-line:#d6dfd8;--pk-muted:#53665c;--pk-radius:16px}
+body.schedule-first{background:var(--pk-paper);color:var(--pk-ink);font-family:Inter,"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.schedule-first .topbar{max-width:1280px;padding:22px 32px;gap:24px}
+.schedule-first .brand{gap:14px;color:var(--pk-ink)}
+.schedule-first .brand svg{width:44px;height:48px;stroke:var(--pk-green);background:var(--pk-lime);padding:8px;border-radius:10px;box-sizing:border-box}
+.schedule-first .brand>span{font-size:24px;letter-spacing:-.04em;font-weight:800}
+.schedule-first .brand small{font-size:14px;color:var(--pk-muted);font-weight:500;margin-top:4px}
+.schedule-first .connection{font-size:14px;color:var(--pk-muted);gap:16px}
+.schedule-first .connection button{min-height:44px;border:1px solid var(--pk-line);background:white;color:var(--pk-ink);font-size:15px;border-radius:8px}
+.page-nav{max-width:1216px;padding:0;margin:0 auto;border-color:var(--pk-line);gap:32px}
+.page-nav a{padding:12px 0;min-height:56px;border-radius:0;font-size:17px;font-weight:650;border-bottom:3px solid transparent;color:var(--pk-muted);margin-bottom:-1px}
+.page-nav a[aria-current=page]{background:transparent;color:var(--pk-ink);border-bottom-color:var(--pk-green)}
+.page-nav a:hover{background:transparent;color:var(--pk-green);border-bottom-color:var(--pk-green)}
+.schedule-first .sheet{max-width:1280px;padding:0 32px 32px}
+.schedule-first .match-hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:32px;overflow:hidden;isolation:isolate;background:var(--pk-ink);color:#fff;border-radius:var(--pk-radius);padding:32px 36px;margin:24px 0;min-height:218px}
+.schedule-first .match-hero::after{content:"";position:absolute;z-index:-1;right:46px;top:-58px;width:240px;height:324px;border:1px solid #d8ee9238;border-radius:3px;transform:rotate(19deg);background:linear-gradient(transparent 32%,#d8ee9238 32%,#d8ee9238 calc(32% + 1px),transparent calc(32% + 1px)),linear-gradient(90deg,transparent calc(50% - .5px),#d8ee9238 calc(50% - .5px),#d8ee9238 calc(50% + .5px),transparent calc(50% + .5px))}
+.schedule-first .hero-copy{max-width:68%;position:relative}
+.schedule-first .match-hero h1{font-size:clamp(32px,3.4vw,48px);line-height:1.2;letter-spacing:-.04em;font-weight:750;color:#fff;margin:0 0 12px}
+.schedule-first .event-name{color:var(--pk-lime);font-size:17px;font-weight:650;margin:0 0 8px}
+.schedule-first .page-description{color:#dce5df;font-size:17px;line-height:1.7;margin:0 0 12px}
+.schedule-first .page-disclaimer{font-size:13px;color:#bacbc0}
+.event-overview{position:relative;display:grid;gap:16px;flex:none;min-width:132px;padding-left:24px;border-left:1px solid #ffffff29}
+.event-overview div{display:flex;align-items:baseline;gap:10px}
+.event-overview strong{font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:var(--pk-lime)}
+.event-overview span{font-size:14px;color:#e0e8e1}
+.schedule-first .query-toolbar{border:1px solid var(--pk-line);border-radius:var(--pk-radius);padding:24px;margin-bottom:28px;background:#fff;box-shadow:0 4px 16px #182f2505}
+.schedule-first .search-command label{font-size:18px;font-weight:700;margin-bottom:12px}
+.schedule-first .search-input{background:#f8faf7;border:1px solid #a9bbae;border-radius:10px;min-height:58px}
+.schedule-first .search-input svg{stroke:var(--pk-green);color:var(--pk-green);width:22px;height:22px}
+.schedule-first .search-input input{font-size:19px;min-height:56px}
+.schedule-first .search-input input::placeholder{font-size:17px;color:#617368}
+.schedule-first .search-input:focus-within{border-color:var(--pk-green);outline:3px solid #d8ee9280;outline-offset:2px}
+.schedule-first .date-share-row{margin-top:16px}
+.schedule-first .date-share-row .day-tabs{gap:12px}
+.schedule-first .day-tab{background:var(--pk-paper);border-color:var(--pk-line);border-radius:10px;min-height:62px;display:flex;flex-direction:row;gap:14px;padding:12px 20px}
+.schedule-first .day-tab strong{font-size:23px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.schedule-first .day-caption{font-size:14px}
+.schedule-first .day-tab[aria-pressed=true]{background:var(--pk-green);color:#fff;border-color:var(--pk-green);box-shadow:inset 4px 0 0 var(--pk-lime)}
+.schedule-first .browse-heading{align-items:center;margin-bottom:4px}
+.schedule-first .browse-heading h2{font-size:24px;letter-spacing:-.025em;font-weight:750}
+.schedule-first .summary{font-size:15px;color:var(--pk-muted);font-variant-numeric:tabular-nums}
+.schedule-first .schedule-day-heading{font-size:16px;font-weight:600;color:var(--pk-muted);margin:20px 0 16px;letter-spacing:.02em}
+.schedule-first .time-slot{grid-template-columns:72px minmax(0,1fr);gap:16px}
+.schedule-first .slot-clock{font-size:23px;font-weight:650;color:var(--pk-green);letter-spacing:-.04em;padding-top:16px}
+.schedule-first .slot-clock::after{background:var(--pk-line)}
+.schedule-first .ticket-grid{gap:16px;align-items:stretch}
+.schedule-first .match-ticket{background:#fff;border:1px solid var(--pk-line);border-radius:12px;padding:20px;transition:border-color 150ms ease,box-shadow 150ms ease}
+.schedule-first .match-ticket:hover{border-color:#8eab96;box-shadow:0 4px 16px #152e2908}
+.schedule-first .ticket-head{padding-bottom:12px;border-bottom:1px solid #e8ede8;gap:12px;align-items:center}
+.schedule-first .ticket-head>strong{font-size:15px;font-weight:700;letter-spacing:.015em;color:var(--pk-ink)}
+.schedule-first .ticket-planned{font-size:14px;font-variant-numeric:tabular-nums;color:var(--pk-muted)}
+.schedule-first .ticket-competition{font-size:14px;color:var(--pk-muted);margin:8px 0 10px;gap:8px}
+.schedule-first .ticket-competition button{color:var(--pk-green);font-size:14px;font-weight:650;min-height:44px}
+.schedule-first .player-name{font-size:22px;font-weight:650;letter-spacing:-.02em;line-height:1.4;min-height:44px}
+.schedule-first .ticket-player{padding:2px 0;gap:12px;min-width:0}
+.schedule-first .player-score{font-size:24px;min-width:36px;min-height:36px;line-height:36px;text-align:center;border-radius:6px;background:#edf2ec;color:var(--pk-green);font-variant-numeric:tabular-nums}
+.schedule-first .ticket-player.is-winner .player-score{background:var(--pk-lime);color:var(--pk-ink)}
+.schedule-first .ticket-foot{border:0;margin-top:12px;padding:0;font-size:13px;color:var(--pk-muted)}
+.schedule-first .ticket-status{display:inline-flex;align-items:center;min-height:28px;padding:4px 9px;border-radius:5px;background:#f0f3ef;font-size:13px;color:var(--pk-muted)}
+.schedule-first .match-ticket[data-status=completed]{border-top:3px solid var(--pk-green);padding-top:18px}
+.schedule-first .match-ticket[data-status=completed] .ticket-status{background:#e9f1e2;color:#294d32;font-weight:600}
+.schedule-first .ticket-scoreline{font-size:15px;letter-spacing:.04em;color:var(--pk-ink);padding-top:12px;margin-top:12px;border-top:1px solid #e8ede8;font-variant-numeric:tabular-nums}
+.schedule-first .panel{background:#fff;border-color:var(--pk-line);border-radius:var(--pk-radius);padding:24px}
+.schedule-first .panel>h2,.schedule-first .stage-title{color:var(--pk-ink);font-weight:700}
+.schedule-first .stage{border-color:var(--pk-line)}
+.schedule-first .match{border-color:var(--pk-line);border-radius:10px;background:#fff}
+.schedule-first .match.completed{border-top:3px solid var(--pk-green)}
+.schedule-first th{background:#edf2ec;color:var(--pk-green);font-weight:650}
+.schedule-first .personal-summary{background:#e8f0df;border:1px solid #c7d7b9;border-radius:12px}
+.schedule-first .event-information{margin-top:40px;border-color:var(--pk-line)}
+.schedule-first footer{padding:24px 0;color:var(--pk-muted);border-top:1px solid var(--pk-line);font-size:14px}
+.schedule-first button,.schedule-first select,.schedule-first a{touch-action:manipulation}
+.schedule-first button:not(:disabled),.schedule-first a{transition:background-color 150ms ease,border-color 150ms ease,color 150ms ease,transform 150ms ease}
+.schedule-first button:not(:disabled):active{transform:translateY(1px)}
+.schedule-first :focus-visible{outline:3px solid #60822d;outline-offset:3px}
+@media(hover:hover) and (pointer:fine){.schedule-first .connection button:hover,.schedule-first .day-tab:hover{transform:translateY(-1px)}.schedule-first .match-filter-link:hover{text-decoration:underline;text-underline-offset:5px}}
+@media(max-width:1279px){.page-nav{margin-inline:32px}}
+@media(max-width:767px){
+ .schedule-first .topbar{padding:16px 20px;gap:12px}.schedule-first .brand>span{font-size:21px}.schedule-first .brand small{font-size:13px}.schedule-first .connection{gap:8px;font-size:13px}.schedule-first .connection #connection{max-width:110px;text-align:right}
+ .page-nav{margin-inline:20px;gap:24px}.page-nav a{font-size:16px;min-height:52px;padding:12px 0}.schedule-first .sheet{padding:0 20px 24px}
+ .schedule-first .match-hero{padding:24px;min-height:0;margin:20px 0;gap:20px;flex-wrap:wrap}.schedule-first .hero-copy{max-width:none;width:100%}.schedule-first .match-hero h1{font-size:34px}.schedule-first .page-description{font-size:16px}.schedule-first .event-name{font-size:16px}.schedule-first .match-hero::after{right:-52px;opacity:.6}
+ .event-overview{display:flex;gap:20px;border-left:0;border-top:1px solid #ffffff26;padding:16px 0 0;width:100%;min-width:0}.event-overview div{gap:6px}.event-overview strong{font-size:24px}.event-overview span{font-size:13px}
+ .schedule-first .query-toolbar{padding:18px;margin-bottom:24px}.schedule-first .search-command label{font-size:17px}.schedule-first .search-input input{font-size:18px;min-height:52px;padding-inline:10px}.schedule-first .search-input input::placeholder{font-size:16px}.schedule-first .search-input{min-height:54px}
+ .schedule-first .date-share-row .day-tabs{gap:8px}.schedule-first .day-tab{min-height:62px;flex-direction:column;gap:2px;padding:8px;min-width:0}.schedule-first .day-tab strong{font-size:22px}.schedule-first .day-caption{font-size:13px}
+ .schedule-first .time-slot{grid-template-columns:46px minmax(0,1fr);gap:10px}.schedule-first .slot-clock{font-size:18px;padding-top:16px}.schedule-first .ticket-grid{gap:12px;grid-template-columns:1fr}.schedule-first .match-ticket{padding:16px}.schedule-first .match-ticket[data-status=completed]{padding-top:14px}.schedule-first .ticket-head{gap:8px}.schedule-first .ticket-head>strong{font-size:14px}.schedule-first .ticket-planned{font-size:13px}.schedule-first .player-name{font-size:21px}.schedule-first .browse-heading{flex-wrap:wrap;gap:6px 16px}.schedule-first .summary{font-size:14px}.schedule-first .panel{padding:18px 16px}
+}
+@media(max-width:359px){.schedule-first .topbar{padding-inline:16px}.schedule-first .brand svg{width:36px;height:40px;padding:6px}.schedule-first .brand small{font-size:12px}.schedule-first .connection #connection{display:none}.page-nav{margin-inline:16px;gap:20px}.page-nav a{font-size:15px}.schedule-first .sheet{padding-inline:16px}.schedule-first .match-hero{padding:20px}.event-overview{gap:12px}.event-overview strong{font-size:22px}.event-overview span{font-size:12px}.schedule-first .query-toolbar{padding:14px}.schedule-first .ticket-head{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.schedule-first *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* Draw cards use the same match identity and result treatment. */
+.schedule-first .match .match-head{background:#eff4e9;margin:-1px -1px 12px;padding:12px 14px;border-radius:9px 9px 0 0;border-bottom:1px solid var(--pk-line);color:var(--pk-green);font-size:14px}
+.schedule-first .match .match-head strong{font-weight:700;font-variant-numeric:tabular-nums}
+.schedule-first .match .match-head>span{font-size:13px;color:var(--pk-muted)}
+.schedule-first .match .side{padding:8px 14px;gap:12px;min-height:48px}
+.schedule-first .match .side-name{font-weight:600;letter-spacing:-.02em}
+.schedule-first .match .game-count{font-size:22px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--pk-green)}
+.schedule-first .match .match-footer{padding:10px 14px;color:var(--pk-muted);font-size:14px;border-color:#e3ebdd}
+.schedule-first .match .match-footer p{font-size:14px}
+.schedule-first .round-title{color:var(--pk-green);font-weight:650}
+@media(max-width:767px){
+ .schedule-first .match-hero .page-description{display:none}
+ .schedule-first .match-hero{gap:12px}.schedule-first .event-name{margin-bottom:8px}.schedule-first .match-hero h1{margin-bottom:8px}
+ .schedule-first .page-disclaimer{font-size:13px}.schedule-first .ticket-planned{font-size:14px}.schedule-first .day-caption{font-size:14px}
+ .page-dock{background:#fff;border-top:1px solid var(--pk-line);padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom));gap:8px;box-shadow:0 -4px 16px #152e2905}
+ .page-dock a{font-size:15px;min-height:48px;padding:10px 8px;border-radius:8px;color:var(--pk-muted);font-weight:650}
+ .page-dock a[aria-current=page]{background:var(--pk-ink);color:var(--pk-lime)}
+}

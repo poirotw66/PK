@@ -65,6 +65,7 @@ def main() -> None:
     copyfile(root / "live-scores.mjs", dist / "live-scores.mjs")
     copyfile(root / "reader-pages.mjs", dist / "reader-pages.mjs")
     copyfile(root / "pages.css", dist / "pages.css")
+    copyfile(root / "court-theme.css", dist / "court-theme.css")
     copyfile(root / "standings.mjs", dist / "standings.mjs")
     snapshot = repo.load()
     if snapshot.id != payload["revision_id"]:

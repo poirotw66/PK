@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./mobile-schedule.css";
 import "./readability.css";
+import "./court-theme.css";
 
 export const metadata: Metadata = {
   title: "PK 賽程管理台",

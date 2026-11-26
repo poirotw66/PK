@@ -231,6 +231,8 @@ function syncBrowseControls() {
   $('query-context').hidden=!context.length;
   $('query-context').textContent=context.join(' · ');
   $('match-total').textContent = data.matches.length;
+  if($('overview-matches'))$('overview-matches').textContent=data.matches.length;
+  if($('overview-divisions'))$('overview-divisions').textContent=data.divisions.length;
   $('event-totals').textContent = `場比賽 · ${data.divisions.length} 個組別`;
 }
 
@@ -246,7 +248,7 @@ function chooseDivision(id) {
   selectedPlayer='';$('search').value='';$('division').value=id;view='schedule';filterChanged();
 }
 function scheduleTicket(match) {
-  const ticket=node('article',null,'match-ticket');ticket.dataset.matchId=match.id;
+  const ticket=node('article',null,'match-ticket');ticket.dataset.matchId=match.id;ticket.dataset.status=match.status;
   ticket.setAttribute('aria-label',`第 ${match.code} 場`);
   const head=node('div',null,'ticket-head');
   head.append(node('strong',`第 ${match.code} 場`));
@@ -258,6 +260,7 @@ function scheduleTicket(match) {
   for(const [key,side]of[['a',match.side_a],['b',match.side_b]]){
     const player=node('div',null,'ticket-player'),name=node(side.entry_id&&side.resolution==='confirmed'?'button':'span',side.name,side.name===selectedPlayer?'player-name match-filter-link is-selected-player':'player-name match-filter-link');
     if(name.tagName==='BUTTON'){name.type='button';name.setAttribute('aria-label',`篩選選手${side.name}`);name.addEventListener('click',()=>choosePlayer(side.name));}
+    if(match.result?.winner_entry_id===side.entry_id)player.className+=' is-winner';
     player.append(name);
     if(match.result?.games.length&&(match.result.outcome??'played')==='played'){const wins=match.result.games.filter(game=>key==='a'?game.side_a>game.side_b:game.side_b>game.side_a).length;player.append(node('strong',String(wins),'player-score'));}
     players.append(player);
