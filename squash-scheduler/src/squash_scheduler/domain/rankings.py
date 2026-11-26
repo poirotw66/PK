@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from .match_rules import effective_match_rules
+
 import math
 from typing import Any
 
+from .coach_tiebreak import order_tied_entries
 from .draws import draw_inputs
 from .matches import dependency_map
 from .models import (
@@ -93,6 +96,11 @@ def ranking_basis(snapshot: Snapshot, stage_id: str) -> str:
                 key=lambda e: e.get("id", ""),
             ),
             "rules": effective_rules(snapshot, stage_id),
+            **(
+                {"coach_competition_rules": True}
+                if snapshot.config.get("runtime", {}).get("coach_competition_rules")
+                else {}
+            ),
         }
     )
 
@@ -338,7 +346,7 @@ def import_results(snapshot: Snapshot, payload: dict[str, Any]) -> dict[str, Any
             rules = (
                 rules
                 or ((match.rule_snapshot or {}).get("match_rules"))
-                or effective_rules(working, match.stage_id)
+                or effective_match_rules(working, match)
             )
             result = {
                 k: raw[k]
@@ -428,6 +436,7 @@ def compute_rankings(snapshot: Snapshot, stage_id: str) -> dict[str, Any]:
         missing = len(group_matches) != len(entry_ids) * (len(entry_ids) - 1) // 2
         incomplete, rule_problem, pending_results = exclusions or missing, False, False
         head_to_head: dict[frozenset[str], str] = {}
+        quotient_records: list[dict[str, Any]] = []
         for match in group_matches:
             if match.status in {"excluded", "cancelled"}:
                 continue
@@ -466,6 +475,7 @@ def compute_rankings(snapshot: Snapshot, stage_id: str) -> dict[str, Any]:
             if not included:
                 incomplete = True
                 continue
+            quotient_records.append({"a": first, "b": second, "games": result.get("games", []), "target": rules.get("points_to_win_game", 11), "margin": rules.get("win_by_points", 2)})
             for entry, row in ((first, a), (second, b)):
                 row["adjudicated_count"] += int(adjudicated)
                 if winner == entry:
@@ -512,7 +522,11 @@ def compute_rankings(snapshot: Snapshot, stage_id: str) -> dict[str, Any]:
         ordered: list[dict[str, Any]] = []
         for points in sorted({r["points"] for r in rows.values()}, reverse=True):
             tied = [r for r in rows.values() if r["points"] == points]
-            if len(tied) == 2:
+            if snapshot.config.get("runtime", {}).get("coach_competition_rules") and len(tied) > 1:
+                order, unresolved = order_tied_entries([row["entry_id"] for row in tied], quotient_records)
+                tied = [rows[entry] for entry in order]
+                tie_groups.extend(unresolved)
+            elif len(tied) == 2:
                 winner = head_to_head.get(frozenset(r["entry_id"] for r in tied))
                 if winner:
                     tied.sort(key=lambda r: r["entry_id"] != winner)

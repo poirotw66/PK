@@ -9,13 +9,13 @@ export async function GET() {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PK 現場計分 · iPad</title>
+<title>PK 實驗性計分 · iPad</title>
 <link rel="stylesheet" href="/ipad-operator.css">
 <script src="/ipad-operator.js" defer></script>
 </head>
 <body>
 <main>
-    <header><p class="eyebrow">PK 壁球賽務</p><h1>現場計分</h1><p>舊款 iPad 手動操作版</p></header>
+    <header><p class="eyebrow">PK 壁球賽務</p><h1>即時計分（實驗性）</h1><p>舊款 iPad 試用介面；一般賽務請使用<a href="/live">成績登錄</a>。</p></header>
     <button id="refresh" class="wide">重新整理賽程</button>
     <p id="feedback" role="status" aria-live="polite">正在讀取賽程…</p>
     <a id="signin" href="/temporary-login" hidden>重新登入</a>

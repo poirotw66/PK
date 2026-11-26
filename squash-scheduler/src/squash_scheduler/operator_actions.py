@@ -32,10 +32,23 @@ def _now() -> datetime:
 
 
 def _time(value: str) -> datetime:
-    result = datetime.fromisoformat(value)
-    if result.utcoffset() is None or result.second or result.microsecond:
+    result = _recorded_time(value)
+    if result.second or result.microsecond:
         raise ValueError("現場時間必須包含時區且以整分鐘記錄。")
     return result
+
+
+def _recorded_time(value: str) -> datetime:
+    result = datetime.fromisoformat(value)
+    if result.utcoffset() is None:
+        raise ValueError("現場紀錄時間必須包含時區。")
+    return result
+
+
+def _ceil_minute(value: datetime) -> datetime:
+    return value.replace(second=0, microsecond=0) + timedelta(
+        minutes=int(bool(value.second or value.microsecond))
+    )
 
 
 def _identity(operation: dict[str, Any]) -> tuple[str, str]:
@@ -70,6 +83,28 @@ def _live(snapshot: Snapshot) -> dict[str, dict[str, Any]]:
     assigned = {a.match_id: a for a in snapshot.assignments}
     result: dict[str, dict[str, Any]] = {}
     for event in _branch(snapshot):
+        if event.get("kind") == "cloud_return":
+            facts = event["live"]
+            for mid, started_at in facts["starts"].items():
+                if mid not in matches or matches[mid].status != "completed":
+                    continue
+                previous = result.get(mid, {})
+                completed_by = event["exported_at"]
+                if previous.get("completed_by") and _recorded_time(
+                    previous["completed_by"]
+                ) < _recorded_time(completed_by):
+                    completed_by = previous["completed_by"]
+                result[mid] = {
+                    "called_at": previous.get("called_at"),
+                    "started_at": started_at,
+                    "actual_court_id": facts["actual_courts"][mid],
+                    "completed_by": completed_by,
+                    "delay_minutes": 0,
+                    "delay_active": False,
+                    "earliest_start_at": None,
+                    "change_id": event["id"],
+                }
+            continue
         if event.get("kind") != "live_match_event":
             continue
         mid = event.get("match_id")
@@ -95,6 +130,8 @@ def _live(snapshot: Snapshot) -> dict[str, dict[str, Any]]:
             if assignment is None or assignment.court_id != event.get("court_id"):
                 continue
             row["called_at" if action == "call" else "started_at"] = event["requested_at"]
+            if action == "start":
+                row["actual_court_id"] = assignment.court_id
         elif action == "delay":
             row.update(
                 delay_minutes=event["delay_minutes"],
@@ -116,7 +153,9 @@ def state_fields(snapshot: Snapshot) -> dict[str, Any]:
     for court in courts:
         rows = []
         for assignment in sorted(snapshot.assignments, key=lambda a: (a.start_at, a.match_id)):
-            if assignment.court_id != court["id"] or assignment.match_id not in matches:
+            facts = live.get(assignment.match_id, {})
+            actual_court = facts.get("actual_court_id") or assignment.court_id
+            if actual_court != court["id"] or assignment.match_id not in matches:
                 continue
             match = matches[assignment.match_id]
             rows.append(
@@ -124,6 +163,8 @@ def state_fields(snapshot: Snapshot) -> dict[str, Any]:
                     "match_id": match.id,
                     "status": match.status,
                     "planned_start_at": assignment.start_at.isoformat(),
+                    "planned_court_id": assignment.court_id,
+                    "actual_court_id": None,
                     "called_at": None,
                     "started_at": None,
                     "delay_minutes": 0,
@@ -173,11 +214,13 @@ def state_fields(snapshot: Snapshot) -> dict[str, Any]:
 def _actual_end(
     snapshot: Snapshot, match_id: str, row: dict[str, Any], at: datetime, context: Any
 ) -> datetime:
-    start = _time(row["started_at"])
+    start = _recorded_time(row["started_at"])
     end = start + timedelta(minutes=context.timing[match_id]["estimated_play_minutes"])
     match = context.matches[match_id]
     if match.status == "in_progress":
         return max(end, at + timedelta(minutes=context.grid))
+    if row.get("completed_by"):
+        return _ceil_minute(max(end, _recorded_time(row["completed_by"])))
     for result in snapshot.results:
         if (
             result.get("match_id") == match_id
@@ -218,9 +261,9 @@ def schedule_live_options(snapshot: Snapshot, at: datetime | None = None) -> dic
             continue
         assignment = assigned[mid]
         end = _actual_end(snapshot, mid, row, current, context)
-        blocks.setdefault(assignment.court_id, []).append(
+        blocks.setdefault(row.get("actual_court_id") or assignment.court_id, []).append(
             (
-                _time(row["started_at"]),
+                _recorded_time(row["started_at"]).replace(second=0, microsecond=0),
                 end + timedelta(minutes=context.timing[mid]["court_buffer_minutes"]),
             )
         )
@@ -390,7 +433,7 @@ def _live_action(snapshot: Snapshot, operation: dict[str, Any]) -> tuple[Snapsho
                     )
                     recorded = live.get(prior.id, {}).get("started_at")
                     prior_start = (
-                        _time(recorded)
+                        _recorded_time(recorded)
                         if recorded
                         else prior_assignment.start_at
                         if prior_assignment
@@ -429,7 +472,7 @@ def _live_action(snapshot: Snapshot, operation: dict[str, Any]) -> tuple[Snapsho
                 )
                 rest = rest_minutes(context, match.id, prior.id) + (
                     transfer_minutes(context, match.id, prior.id)
-                    if previous.court_id != assignment.court_id
+                    if (row.get("actual_court_id") or previous.court_id) != assignment.court_id
                     else 0
                 )
                 if at < end + timedelta(minutes=rest):

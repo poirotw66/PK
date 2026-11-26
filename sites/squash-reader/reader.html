@@ -11,47 +11,42 @@
   <link rel="stylesheet" href="/readability.css"><link rel="stylesheet" href="/pages.css">
   <script type="module" src="/live.mjs"></script>
 </head>
-<body class="schedule-first" data-page="live">
-  <a class="skip-link" href="#live-now-courts">跳至主要內容</a>
+<body class="schedule-first" data-page="schedule">
+  <a class="skip-link" href="#search">跳至主要內容</a>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="壁球賽程查詢首頁"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M3 3h26v30H3zM3 13h26M16 13v20M3 23h26"/></svg><span>壁球賽場<small>賽程與即時比分</small></span></a>
+    <a class="brand" href="/" aria-label="壁球賽程查詢首頁"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M3 3h26v30H3zM3 13h26M16 13v20M3 23h26"/></svg><span>壁球賽場<small>賽程與完賽成績</small></span></a>
     <div class="connection"><span id="connection" role="status">讀取賽程中</span><button id="refresh" type="button">更新</button></div>
   </header>
-  <nav class="page-nav" aria-label="主要功能"><a data-page-link="live" href="/live">即時賽況</a><a data-page-link="schedule" href="/schedule">查詢賽程</a><a data-page-link="bracket" href="/brackets">晉級對戰</a><a data-page-link="standings" href="/standings">積分排名</a></nav>
+  <nav class="page-nav" aria-label="主要功能"><a data-page-link="schedule" href="/schedule">預定時間</a><a data-page-link="bracket" href="/brackets">各組賽程</a><a data-page-link="results" href="/results">完賽成績</a></nav>
   <main class="sheet" id="reader-top" tabindex="-1">
     <section class="match-hero" aria-labelledby="hero-title">
-      <div class="hero-copy"><h1 id="hero-title">即時賽況</h1><p id="event-name" class="event-name">壁球賽事</p><p id="page-description" class="page-description">看現在誰在比賽，比分自動更新。</p><span class="page-disclaimer">模擬示範・以主辦公告為準</span></div>
+      <div class="hero-copy"><h1 id="hero-title">預定時間</h1><p id="event-name" class="event-name">壁球賽事</p><p id="page-description" class="page-description">輸入選手姓名或場號，查看當日預定時間與完賽成績。</p><span class="page-disclaimer">模擬示範・以主辦公告為準</span></div>
 
     </section>
     <p id="error" class="notice" role="status" hidden></p>
-    <section class="live-now" aria-labelledby="live-now-title"><div class="live-now-heading sr-only"><div><h2 id="live-now-title">目前場上</h2></div><p id="live-now-updated">正在讀取場地資訊…</p></div><div id="live-now-courts" class="live-now-courts" tabindex="-1"></div><p class="live-now-note">開賽與成績由賽務確認，比分約每 2 秒自動更新。</p></section>
+
     <section class="query-toolbar" aria-label="快速查詢">
-      <div class="search-command"><label for="search">找選手 · 找場次</label><div class="search-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg><input id="search" type="search" aria-label="搜尋選手或場號" placeholder="輸入選手姓名或場號" autocomplete="off"><button id="clear-search" type="button" hidden>清除搜尋</button><span class="search-hint">即時篩選</span></div></div>
+      <div class="search-command"><label for="search">找選手 · 找場次</label><div class="search-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg><input id="search" type="search" enterkeyhint="search" spellcheck="false" aria-label="搜尋選手或場號" placeholder="輸入選手姓名或場號" autocomplete="off"><button id="clear-search" type="button" hidden>清除搜尋</button><span class="search-hint">即時篩選</span></div></div>
       <div id="player-suggestions" class="player-suggestions" aria-label="符合姓名的選手" hidden></div>
-      <div class="date-share-row"><div id="day-tabs" class="day-tabs" role="group" aria-label="比賽日期"></div><button id="mobile-filters" type="button" aria-haspopup="dialog" aria-controls="filter-dialog"><span id="mobile-filter-label">篩選賽程</span></button><button id="share-query" class="share-query" type="button">分享賽程 ↗</button></div>
+      <div class="date-share-row"><div id="day-tabs" class="day-tabs" role="group" aria-label="比賽日期"></div></div>
     </section>
     <div id="share-feedback" class="share-feedback" role="status" aria-live="polite" hidden><span id="share-message"></span><input id="share-link" aria-label="分享連結" readonly hidden></div>
     <section id="personal-summary" class="personal-summary" aria-label="個人賽程" hidden></section>
     <section class="browse-controls" aria-label="賽程篩選">
       <div class="browse-heading"><div><h2 id="schedule-heading">賽事日程</h2></div><p id="summary" class="summary" aria-live="polite"></p></div>
       <div id="filter-home" class="filter-home"><div id="filter-fields" class="filter-row"><div class="filter-selects"><label>組別<select id="division"><option value="">全部組別</option></select></label><label class="sr-only">日期<select id="date"><option value="">全部日期</option></select></label></div></div></div>
-      <p id="query-context" class="query-context" hidden></p><div class="view-row"><button type="button" id="reset-filters" class="reset-filters" hidden>清除篩選 ↗</button></div>
+      <p id="query-context" class="query-context" hidden></p><div class="view-row"><button type="button" id="reset-filters" class="reset-filters" hidden>清除姓名／組別篩選</button></div>
     </section>
     <div class="reader-layout">
       <aside class="reader-sidebar" aria-label="閱讀導覽"><details id="reader-navigation" class="reader-navigation"><summary><span>頁內導覽</span><span id="nav-current">選擇閱讀章節</span></summary><p id="nav-context" class="muted">取得章節中</p><nav id="section-nav" aria-label="賽況章節"></nav><a class="reader-back-top" href="#reader-top">回到頁首 ↑</a></details></aside>
       <div id="content"><section class="panel"><h2>正在準備賽程</h2><p class="empty">讀取場次、比賽時間與對戰名單。</p></section></div>
     </div>
-    <details class="event-information"><summary>賽事資訊、PDF 與同步狀態</summary>      <div class="event-actions"><div class="hero-stat"><strong id="match-total">—</strong><span id="event-totals">場比賽</span><p id="workspace" class="muted"></p></div><div class="pdf-download"><a href="/downloads/event-booklet.pdf" download="event-booklet.pdf" class="pdf-download-link">下載賽事 PDF <span aria-hidden="true">↓</span></a><p>PDF_PAGE_COUNT 頁 · 固定版本</p><small>固定版本，可能與最新網站賽程不同。</small></div></div>    <details id="event-policy" class="event-policy"><summary>暫定賽程 · 分組輪替 <span>排程說明 ＋</span></summary><div class="publication-note"><span class="demo-label">模擬示範</span><p>賽程由賽務確認後發布，請依最新時間與場地出賽。尚未確定的晉級對戰，待賽務確認後更新。本網站為模擬示範，非主辦正式公告。</p></div></details>
-    <section class="sync-strip" aria-label="資料更新與同步狀態"><details class="sync-status"><summary><span class="sync-stamp">資料更新 <strong id="data-updated">讀取中</strong></span><strong id="source-state">確認中</strong><span class="sync-toggle">同步詳情</span></summary><div class="sync-details"><p>同步到網站 <strong id="cloud-synced">讀取中</strong></p><p id="sync-detail" role="status">正在檢查網站資料。</p><p id="notice">賽況以賽務確認為準。</p><p>姓名來自原始報名名單。後台已確認的比分與成績會同步，尚未發布的賽程草案不會公開。來源離線時保留最後資料。</p></div></details></section>
+    <details class="event-information"><summary>賽事資訊、PDF 與同步狀態</summary>      <div class="event-actions"><div class="hero-stat"><strong id="match-total">—</strong><span id="event-totals">場比賽</span><p id="workspace" class="muted"></p></div><div class="pdf-download"><a href="/downloads/event-booklet.pdf" download="event-booklet.pdf" class="pdf-download-link">下載賽事 PDF <span aria-hidden="true">↓</span></a><p>PDF_PAGE_COUNT 頁 · 固定版本</p><small>固定版本，可能與最新網站賽程不同。</small></div></div>    <details id="event-policy" class="event-policy"><summary>暫定賽程 · 分組輪替 <span>排程說明 ＋</span></summary><div class="publication-note"><span class="demo-label">模擬示範</span><p>賽程由賽務確認後發布，請依最新時間與場地出賽。尚未確定的各組賽程，待賽務確認後更新。本網站為模擬示範，非主辦正式公告。</p></div></details>
+    <section class="sync-strip" aria-label="資料更新與同步狀態"><details class="sync-status"><summary><span class="sync-stamp">資料更新 <strong id="data-updated">讀取中</strong></span><strong id="source-state">確認中</strong><span class="sync-toggle">同步詳情</span></summary><div class="sync-details"><p>同步到網站 <strong id="cloud-synced">讀取中</strong></p><p id="sync-detail" role="status">正在檢查網站資料。</p><p id="notice">賽程與完賽成績以賽務確認為準。</p><p>姓名來自原始報名名單。後台已確認的完賽成績會同步，尚未發布的賽程草案不會公開。來源離線時保留最後資料。</p></div></details></section>
 </details>
     <footer><a class="footer-brand" href="#reader-top">回到頁首 ↑</a><span id="updated">尚未取得資料</span><span id="revision"></span><p>Asia/Taipei · 公開資料唯讀 · 賽程與成績以主辦正式公告為準</p></footer>
   </main>
-  <nav class="page-dock" aria-label="手機主要功能"><a data-page-link="live" href="/live">看比分</a><a data-page-link="schedule" href="/schedule">查賽程</a><a data-page-link="bracket" href="/brackets">晉級圖</a><a data-page-link="standings" href="/standings">積分榜</a></nav>
-  <dialog id="filter-dialog" class="filter-dialog" aria-labelledby="filter-title">
-    <div class="filter-dialog-heading"><div><p>縮小查看範圍</p><h2 id="filter-title">篩選賽程</h2></div><button id="close-filters" type="button" aria-label="關閉篩選">×</button></div>
-    <div id="mobile-filter-fields"></div>
-    <p class="filter-help">日期可直接在搜尋列下方切換。</p>
-    <div class="filter-dialog-actions"><button id="clear-mobile-filters" type="button">清除全部</button><button id="apply-mobile-filters" type="button">查看賽程</button></div>
-  </dialog>
+  <nav class="page-dock" aria-label="手機主要功能"><a data-page-link="schedule" href="/schedule">預定時間</a><a data-page-link="bracket" href="/brackets">各組賽程</a><a data-page-link="results" href="/results">完賽成績</a></nav>
+
 </body>
 </html>

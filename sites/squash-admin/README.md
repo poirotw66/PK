@@ -28,6 +28,39 @@ starts and confirmed match results synchronize automatically through the signed
 publication outbox. They do not modify the original local workspace or old PDF
 exports. Automatic re-planning remains outside this version.
 
+## Local and cloud handoff
+
+The primary administrator can download a **地端交接檔** from the schedule page.
+This authenticated download contains the current canonical schedule, confirmed
+results, original local source revision, cloud revision, publication sequence,
+actual start times and actual courts. It excludes session tokens and point history.
+Finish active matches and confirm their results before downloading. A completed
+match without a result, or a historical actual start without court evidence, blocks
+the download with an explanation. Additional and temporary administrators cannot
+download or replace a local handoff.
+
+Import the `pk-cloud-return-v1` file through the local operator's workflow page,
+review the differences, then confirm. After replanning locally, export the
+`pk-local-update-v1` handoff and select it on this Site's schedule page. Enter a
+reason, preview, and confirm the replacement. Only time/court changes to existing
+unstarted, unlocked matches are allowed. Participants, rules, match topology and
+confirmed results remain fixed. Changed advancement identities require a separate
+reviewed workflow and are rejected by this transfer.
+
+The replacement requires the same Site origin, original source revision, cloud
+revision and publication sequence captured by the return file. If cloud operations
+occur after download or preview, the replacement fails without overwriting them.
+Confirmation records a new cloud revision and keeps the existing public version;
+publish separately after reviewing the result. SHA-256 checks file integrity, not
+the sender's identity. Keep handoff files private and transfer them only through
+the authenticated operator interfaces.
+
+Bundle `lib/local-return-model.ts` and `lib/local-update-model.ts` into
+`outputs/local-return-model.mjs` and `outputs/local-update-model.mjs` alongside the
+existing `rules` and `publication-model` bundles. Run
+`node --test tests/local-handoff.test.mjs`. After building, run
+`node --test tests/local-handoff-http.test.mjs` for isolated synthetic D1 checks.
+
 ## Finding space in the schedule
 
 On phones, the default schedule is a chronological match-card list for one court.
@@ -324,16 +357,14 @@ players' points for each played game and leave unplayed games blank. You can
 record a published match without first marking it in progress, or replace
 an active match's point-by-point tally with the confirmed game scores.
 
-## Temporary password access
+## Password administrator access
 
-Set ADMIN_AUTH_MODE=password, TEMP_ADMIN_PASSWORD_HASH, and
-TEMP_ADMIN_EXPIRES_AT in the Sites runtime settings to pause ChatGPT identity
+Set ADMIN_AUTH_MODE=password and TEMP_ADMIN_PASSWORD_HASH in the Sites runtime settings to pause ChatGPT identity
 and use /temporary-login. The hash format is
 pbkdf2_sha256$100000$<16-byte salt in hex>$<32-byte SHA-256 digest in hex>.
-Store the hash as a secret. The expiry is an ISO UTC timestamp.
+Store the hash as a secret. TEMP_ADMIN_EXPIRES_AT is optional; omit it for ongoing password access. If set, it must be a valid future ISO UTC timestamp.
 
-Temporary sessions may manage schedules and scores, but cannot import or
-replace the tournament. Existing administrator records stay unchanged.
+Password sessions have full administrator privileges, including rules, results, publication, backup and tournament handoff. Existing administrator records stay unchanged.
 Sessions expire after 30 idle minutes or eight hours, and the configured expiry
 also invalidates active sessions. Login attempts share a five-per-minute limit.
 Change the hash to revoke all temporary sessions. Set ADMIN_AUTH_MODE=chatgpt

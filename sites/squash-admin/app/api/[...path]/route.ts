@@ -1,5 +1,14 @@
+import { getEncouragementStatus, previewEncouragement, confirmEncouragement } from "../../../lib/encouragement";
+import { previewCoachRules, confirmCoachRules } from "../../../lib/coach-rules";
+import { saveDispatch } from "../../../lib/dispatch";
+import { quickResult } from "../../../lib/quick-result";
+import { exportBackup, previewBackup, confirmBackup } from "../../../lib/backup";
+import { previewAdvancement, confirmAdvancement } from "../../../lib/advancement";
+import { previewResult, confirmResult } from "../../../lib/result-review";
 import { replaceDraftSchedule, canReplaceDraft } from "../../../lib/schedule-cutover";
 import { retryPublicSync } from "../../../lib/sync-service";
+import { exportLocalReturn } from "../../../lib/local-return";
+import { previewLocalUpdate, confirmLocalUpdate } from "../../../lib/local-update";
 import { waitUntil } from "cloudflare:workers";
 import { z } from "zod";
 import { HttpError, adminIdentity, checkCsrf, checkOrigin, cookie, createSession, database, findAdmin, identity, readSession } from "../../../lib/auth";
@@ -22,7 +31,7 @@ function syncScoreInBackground(matchId: string) {
 function json(value: unknown, status = 200, headers: Record<string, string> = {}) {
     return Response.json(value, { status, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...headers } });
 }
-async function body(request: Request) {
+async function body(request: Request, maxBytes = 1024 * 1024) {
     if (!request.headers.get("Content-Type")?.startsWith("application/json"))
         throw new HttpError(415, "請使用 JSON 資料。");
     const reader = request.body?.getReader();
@@ -35,9 +44,9 @@ async function body(request: Request) {
         if (done)
             break;
         size += value.length;
-        if (size > 1024 * 1024) {
+        if (size > maxBytes) {
             await reader.cancel();
-            throw new HttpError(413, "資料不得超過 1 MB。");
+            throw new HttpError(413, `資料不得超過 ${maxBytes / 1024 / 1024} MB。`);
         }
         chunks.push(value);
     }
@@ -92,6 +101,18 @@ async function handle(request: Request) {
     if (!active)
         throw new HttpError(401, "操作台工作階段已到期，請重新連線。");
     if (request.method === "GET") {
+        if (path === "encouragement-status") return json(await getEncouragementStatus());
+        if (path === "backup") {
+            if (account.kind !== "primary") throw new HttpError(403, "只有主管理員可下載備份。");
+            return json(await exportBackup(new URL(request.url).origin), 200, { "Content-Disposition": 'attachment; filename="pk-admin-backup.json"' });
+        }
+        if (path === "local-return") {
+            if (account.kind !== "primary")
+                throw new HttpError(403, "只有原管理員可下載地端交接檔。");
+            return json(await exportLocalReturn(new URL(request.url).origin), 200, {
+                "Content-Disposition": 'attachment; filename="pk-cloud-return.json"',
+            });
+        }
         if (path === "score") {
             const matchId = z.string().min(1).max(100).parse(new URL(request.url).searchParams.get("match_id"));
             const score = await readScore(matchId);
@@ -106,6 +127,36 @@ async function handle(request: Request) {
         throw new HttpError(404, "找不到此頁面。");
     }
     checkCsrf(request, active.csrf);
+    if (path === "local-update-preview" || path === "local-update-confirm") {
+        if (account.kind !== "primary")
+            throw new HttpError(403, "只有原管理員可匯入地端重排。");
+        const origin = new URL(request.url).origin;
+        return json(path === "local-update-preview"
+            ? await previewLocalUpdate(await body(request), active.id, origin)
+            : await confirmLocalUpdate(await body(request), active.id, origin, account.actor));
+    }
+    if (["backup-preview", "backup-confirm", "advancement-preview", "advancement-confirm"].includes(path)) {
+        if (account.kind !== "primary") throw new HttpError(403, "此操作僅限主管理員。");
+        const input = await body(request, path === "backup-preview" ? 8 * 1024 * 1024 : 1024 * 1024);
+        const origin = new URL(request.url).origin;
+        if (path === "backup-preview") return json(await previewBackup(input, active.id, origin));
+        if (path === "advancement-preview") return json(await previewAdvancement(input, active.id));
+        if (path === "advancement-confirm") return json(await confirmAdvancement(input, active.id, account.actor));
+        const saved = await confirmBackup(input, active.id, origin, account.actor); await flushPublication(); return json(saved);
+    }
+    if (path === "encouragement-preview" || path === "encouragement-confirm") {
+        if (account.kind !== "primary") throw new HttpError(403,"只有主管理員可產生鼓勵賽。");
+        const input=await body(request);return json(path === "encouragement-preview" ? await previewEncouragement(input,active.id) : await confirmEncouragement(input,active.id,account.actor));
+    }
+    if (path === "coach-rules-preview" || path === "coach-rules-confirm") {
+        if (account.kind !== "primary") throw new HttpError(403, "只有主管理員可設定賽制。");
+        const input = await body(request);
+        return json(path === "coach-rules-preview" ? await previewCoachRules(input, active.id) : await confirmCoachRules(input, active.id, account.actor));
+    }
+    if (path === "dispatch") return json(await saveDispatch(await body(request),account.actor));
+    if (path === "quick-result") return json(await quickResult(await body(request),account.actor,account.kind==="primary"));
+    if (path === "result-preview") return json(await previewResult(await body(request), active.id, account.kind === "primary"));
+    if (path === "result-confirm") { const saved = await confirmResult(await body(request), active.id, account.actor, account.kind === "primary"); await flushPublication(); return json(saved); }
     if (path === "switch-draft") {
         if (account.kind !== "primary")
             throw new HttpError(403, "只有原管理員可切換賽程。");

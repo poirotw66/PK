@@ -1,0 +1,45 @@
+name: Full synthetic tournament
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked Python dependencies
+        working-directory: squash-scheduler
+        run: |
+          python -m pip install uv
+          uv sync --frozen --extra dev
+      - name: Install locked admin dependencies
+        working-directory: sites/squash-admin
+        run: npm run install:ci
+      - name: Prepare PDF rendering and CJK font
+        working-directory: squash-scheduler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          uv run python -m playwright install --with-deps chromium
+      - name: Verify the entire synthetic workflow
+        run: >-
+          squash-scheduler/.venv/bin/python scripts/verify_full_workflow.py
+          --font /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+          --output squash-scheduler/output/verification/full-workflow
+      - name: Retain receipts and documents
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-workflow-evidence
+          path: |
+            squash-scheduler/output/verification/full-workflow/*.json
+            squash-scheduler/output/verification/full-workflow/workspace/operator-exports/**/booklet.pdf
+            squash-scheduler/output/verification/full-workflow/workspace/operator-exports/**/schedule.xlsx
+            squash-scheduler/output/verification/full-workflow/workspace/operator-exports/**/manifest.json

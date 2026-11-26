@@ -13,8 +13,9 @@ export const scoreSchema = z.object({ rules: scoringRulesSchema, points: z.array
 export const gameSchema = z.object({ side_a: z.number().int().min(0).max(999), side_b: z.number().int().min(0).max(999) }).strict();
 export const resultSchema = z.object({
     rules: scoringRulesSchema,
-    winner: z.enum(["a", "b"]),
-    games: z.array(gameSchema).min(2).max(5),
+    winner: z.enum(["a", "b"]).nullable(),
+    outcome: z.enum(["played", "walkover", "retired", "double_forfeit"]).optional(),
+    games: z.array(gameSchema).max(5),
 }).strict();
 export type ScoringResult = z.infer<typeof resultSchema>;
 export function tally(score: Score) {
@@ -47,15 +48,39 @@ export function scorePoint(score: Score, action: Side | "undo"): Score {
     return next;
 }
 export function validateResult(input: unknown): ScoringResult {
-    const result = resultSchema.parse(input), wins = { a: 0, b: 0 }, needed = Math.floor(result.rules.best_of / 2) + 1;
-    for (const game of result.games) {
+    const result = resultSchema.parse(input), outcome = result.outcome ?? "played";
+    if (result.games.length > result.rules.best_of) throw new Error("局數超過賽制上限。");
+    if (outcome === "double_forfeit") {
+        if (result.winner !== null || result.games.length) throw new Error("雙方棄權不得指定勝方或填寫虛構比分。");
+        return result;
+    }
+    if (!result.winner) throw new Error("請指定已確認的勝方。");
+    if (outcome === "walkover") {
+        if (result.games.length) throw new Error("未賽棄權不得填寫虛構比分。");
+        return result;
+    }
+    const wins = { a: 0, b: 0 }, needed = Math.floor(result.rules.best_of / 2) + 1;
+    for (const [index, game] of result.games.entries()) {
         if (Math.max(wins.a, wins.b) >= needed) throw new Error("勝負確定後不得再增加局數。");
         const high = Math.max(game.side_a, game.side_b), low = Math.min(game.side_a, game.side_b);
-        if (high !== Math.max(result.rules.target, low + result.rules.margin)) throw new Error("局分不符合領先兩分的規則。");
-        wins[game.side_a > game.side_b ? "a" : "b"]++;
+        const terminal = Math.max(result.rules.target, low + result.rules.margin);
+        const finished = high === terminal;
+        if (!finished && !(outcome === "retired" && index === result.games.length - 1 && high < terminal))
+            throw new Error("局分不符合領先兩分的規則；傷退僅最後一局可未完成。");
+        if (finished) wins[game.side_a > game.side_b ? "a" : "b"]++;
     }
-    if (wins[result.winner] !== needed) throw new Error("勝方與局數不一致。");
+    if (outcome === "retired") {
+        if (Math.max(wins.a, wins.b) >= needed) throw new Error("已分出勝負的比賽不能登錄為傷退。");
+    } else if (wins[result.winner] !== needed) throw new Error("勝方與局數不一致。");
     return result;
+}
+export function resultDescription(result: ScoringResult | null | undefined, sideA: string, sideB: string) {
+    if (!result) return "尚未登錄";
+    const outcome = result.outcome ?? "played";
+    const kind = { played: "正常完賽", walkover: "未賽棄權", retired: "傷退", double_forfeit: "雙方棄權" }[outcome];
+    const games = result.games.map(game => `${game.side_a}：${game.side_b}`).join("、");
+    const winner = result.winner === "a" ? sideA : result.winner === "b" ? sideB : "無勝方";
+    return `${kind} · ${winner}${result.winner ? " 勝出" : ""}${games ? " · " + games : ""}`;
 }
 export function finishedResult(score: Score): ScoringResult {
     const state = tally(score);

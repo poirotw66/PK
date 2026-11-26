@@ -12,12 +12,13 @@ from typing import Any
 from uuid import UUID
 
 from .domain.draws import run_draw
-from .domain.encouragement import eligibility_report
+from .domain.encouragement import eligibility_report, division_eligible
 from .domain.encouragement_draws import apply_draw, propose_draw
 from .domain.formats import pending_format_divisions
 from .domain.matches import generate_matches
 from .domain.models import Assignment, Snapshot, canonical_hash, content_hash, new_id, utcnow
 from .domain.rankings import effective_rules, import_results, resolve_side
+from .domain.match_rules import effective_match_rules
 from .domain.revisions import approve
 from .domain.seeds import configure_seeds
 from .domain.validation import target_basis, validate
@@ -158,6 +159,7 @@ class OperatorService:
             "courts": snapshot.config.get("courts", []),
             "event_dates": snapshot.config.get("event", {}).get("event_dates", []),
             "timing_defaults": snapshot.config.get("timing_defaults", {}),
+            "coach_competition_rules": bool(snapshot.config.get("runtime", {}).get("coach_competition_rules")),
             "player_workload": snapshot.config.get("player_workload") or {},
             "schedule_reviews": [
                 deepcopy(c) for c in reversed(snapshot.changes) if c.get("schedule_review")
@@ -220,7 +222,7 @@ class OperatorService:
                     "entry_a": resolve_side(snapshot, m.side_a),
                     "entry_b": resolve_side(snapshot, m.side_b),
                     "result": results.get(m.id),
-                    "best_of": effective_rules(snapshot, m.stage_id).get("best_of_games"),
+                    "best_of": effective_match_rules(snapshot, m).get("best_of_games"),
                     "time": assignments[m.id].start_at.isoformat() if m.id in assignments else None,
                     "assignment": assignments[m.id].model_dump(mode="json")
                     if m.id in assignments
@@ -256,7 +258,7 @@ class OperatorService:
             "eligibility": [
                 eligibility_report(snapshot, d.id)
                 for d in snapshot.divisions
-                if d.name in {"國中男子組", "國中女子組"}
+                if division_eligible(snapshot, d)
             ],
             "counts": {
                 "entries": len(snapshot.entries),
@@ -282,7 +284,25 @@ class OperatorService:
             or (action == "live_match" and operation.get("event") in {"call", "start"})
         ) and pending_format_divisions(snapshot):
             raise ValueError("有組別尚未依新賽制完成對戰。請先完成抽籤與籤表確認。")
-        if action == "format":
+        if action in {"coach_rules", "division_roster", "draw_positions"}:
+            from .operator_creation import apply_coach_rules, add_division, edit_draw
+            if action == "coach_rules":
+                summary = apply_coach_rules(working)
+            elif action == "division_roster":
+                summary = add_division(working, operation["roster"])
+            else:
+                summary = edit_draw(working, operation["draw_id"], operation["positions"], actor, reason)
+        elif action == "event_rules":
+            from .local_workflow import execute_event_rules
+
+            working, summary = execute_event_rules(snapshot, operation["rules"], actor, reason)
+        elif action == "cloud_return":
+            from .cloud_handoff import execute_cloud_return
+
+            working, summary = execute_cloud_return(
+                snapshot, self.repo, operation["envelope"], actor, reason
+            )
+        elif action == "format":
             working, summary = configure_format(
                 working, division_id, operation["format"], actor, reason
             )
@@ -445,7 +465,20 @@ class OperatorService:
         else:
             raise ValueError("不支援的賽務操作。")
         if action in {"schedule", "manual_schedule", "local_replan"}:
+            from .domain.match_numbers import chronological_match_numbers
             from .schedule_review import schedule_review
+
+            if not any(change.get("kind") == "cloud_return" for change in snapshot.changes):
+                numbers = chronological_match_numbers(working)
+                used = {match.display_code for match in working.matches if match.display_code}
+                next_number = 1
+                for match in sorted(working.matches, key=lambda item: int(numbers[item.id])):
+                    if match.display_code:
+                        continue
+                    while str(next_number) in used:
+                        next_number += 1
+                    match.display_code = str(next_number)
+                    used.add(match.display_code)
 
             review = schedule_review(snapshot, working)
             summary.update(
@@ -469,6 +502,11 @@ class OperatorService:
             raise Conflict("賽事已更新，請重新整理後再操作。")
         action = request.get("action")
         allowed = {
+            "coach_rules": set(),
+            "division_roster": {"roster"},
+            "draw_positions": {"draw_id", "positions"},
+            "event_rules": {"rules"},
+            "cloud_return": {"envelope"},
             "format": {"division_id", "format"},
             "seeds": {"division_id", "mode", "seeds"},
             "draw": {"division_id", "seed"},

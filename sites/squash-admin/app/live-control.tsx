@@ -120,12 +120,25 @@ export default function LiveControl({ mode, revision, draftCount, api, onChanged
     const available = data?.courts.filter(court => !court.current) ?? [];
     const selectedCourt = available.find(court => court.id === startCourt);
     const reviewStale = !!review && (data?.revision !== review.revision || data?.sequence !== review.sequence);
-    return <section id={mode === "publication" ? "schedule-publication" : undefined} className="live-control" aria-labelledby="live-control-title"><div className="live-control-heading"><div><h2 id="live-control-title">{mode === "live" ? "找場次開賽" : "發布給參賽者"}</h2><p>{mode === "live" ? "先找場次，再選空場；補登完賽不用選場地。" : "調整並儲存後，在這裡預覽變更並發布。"}</p></div>{data?.public_url && <a href={data.public_url} target="_blank" rel="noreferrer">查看參賽者頁面 ↗</a>}</div>
+    return <section id={mode === "publication" ? "schedule-publication" : undefined} className={"live-control " + (mode === "publication" ? "publication-control" : "court-control")} aria-labelledby="live-control-title"><div className="live-control-heading"><div><h2 id="live-control-title">{mode === "live" ? "目前場上" : "公開賽程"}</h2><p>{mode === "live" ? "選擇正在比賽的場地，繼續計分或確認成績。" : "儲存完成後，確認發布給選手。"}</p></div><div className="live-heading-actions">{mode === "live" && <a className="button-link" href="#start-match">選擇場次開賽</a>}{mode === "live" && data?.public_url && <a href={data.public_url} target="_blank" rel="noreferrer">查看選手頁面</a>}</div></div>
  {error && <p role="alert" className="notice error">{error}</p>}
- {data && <>{mode === "publication" ? <div className="publication-status"><div><strong>{data.pending ? "已保存・等待同步" : !data.published_revision ? "首次使用：請先發布賽程以啟用計分" : data.has_unpublished ? "賽程已儲存，選手還看不到這次修改" : "選手頁面已更新"}</strong><p>{data.error ?? (data.published_at ? `賽程發布 ${time(data.published_at)} · 最近同步 ${time(data.synced_at)}` : "可以先選擇場次；開賽前會引導你確認並發布賽程。")}</p>{draftCount > 0 && <p>請先儲存或清空 {draftCount} 場草案。</p>}</div><div>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}<button className="primary" disabled={busy || draftCount > 0 || !data.has_unpublished} onClick={() => {setError("");setAction(null);setReview({...data.publication_review,revision:data.revision,sequence:data.sequence});}}>{!data.has_unpublished ? (data.pending ? "等待同步" : "目前無新變更") : data.publication_review.initial ? "預覽整份賽程 →" : `查看 ${data.publication_review.changes.length} 場變更 →`}</button></div></div> : <div className="live-sync-status" role="status"><strong>{data.pending ? "已保存・等待同步" : "比分與完賽成績自動同步"}</strong>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}{data.has_unpublished && <p>有尚未發布的賽程，請到<a href="/schedule">賽程調整</a>確認並發布。</p>}{data.error && <p>{data.error}</p>}</div>}
+ {data && <>{mode === "publication" ? <div className="publication-status"><div><strong>{data.pending ? "已保存・等待同步" : !data.published_revision ? "首次使用，請先發布賽程" : data.has_unpublished ? "有未發布的賽程變更" : "已發布，選手可查看最新賽程"}</strong><p>{data.error ?? (data.published_at ? `賽程發布 ${time(data.published_at)} · 最近同步 ${time(data.synced_at)}` : "先預覽整份賽程，確認後才會公開。")}</p>{draftCount > 0 && <p>請先儲存或清空 {draftCount} 場草案。</p>}</div><div>{data.public_url && <a className="publication-reader" href={data.public_url} target="_blank" rel="noreferrer">查看選手頁面</a>}{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}<button className="primary" disabled={busy || draftCount > 0 || !data.has_unpublished} onClick={() => {setError("");setAction(null);setReview({...data.publication_review,revision:data.revision,sequence:data.sequence});}}>{!data.has_unpublished ? (data.pending ? "等待同步" : "目前無新變更") : data.publication_review.initial ? "預覽首次發布" : `預覽 ${data.publication_review.changes.length} 場變更`}</button></div></div> : <div className="live-sync-status" role="status"><strong>{data.pending ? "已保存・等待同步" : "比分與完賽成績自動同步"}</strong>{data.pending && <button disabled={busy} onClick={() => run("sync-retry", {})}>重試同步</button>}{data.has_unpublished && <p>有尚未發布的賽程，請到<a href="/schedule">賽程調整</a>確認並發布。</p>}{data.error && <p>{data.error}</p>}</div>}
  {mode === "live" && <>
-    <section className="live-confirm" aria-label="待賽場次">
-        <h3>待賽場次</h3>
+    <div className="live-court-grid">{data.courts.map(court => {
+        const current = court.current;
+        return <article className={"live-court" + (current ? " is-playing" : "")} key={court.id}>
+            <div className="live-court-top"><h3>{court.name}</h3><span>{current ? "比賽中" : "空場"}</span></div>
+            {current && <><p className="live-division">{current.division} · 第 {current.code} 場</p>
+                <p className="live-players"><strong>{current.side_a}<span>對</span>{current.side_b}</strong></p><p className="live-started">實際開賽 {time(current.started_at)}</p>
+                <button className="primary" disabled={busy} onClick={() => {setResult(null);setScoring({court_id: court.id, court_name: court.name, match: current});}}>進入計分模式</button>
+                <button disabled={busy} onClick={() => void openResult(current, true)}>補登完賽</button>
+                <button disabled={busy} onClick={() => {setResult(null);setAction({court_id: court.id, match: current, action: "cancel"});}}>撤銷誤按開賽</button>
+            </>}
+            {!current && <p className="live-court-empty">目前沒有進行中的比賽，可從待賽場次選擇開賽。</p>}
+        </article>;
+    })}</div>
+    <section id="start-match" className="live-confirm live-start" aria-labelledby="start-match-title">
+        <div className="live-start-heading"><h3 id="start-match-title">選擇場次開賽</h3><p>先找場次，再選空場。紙本成績可直接補登完賽。</p></div>
         <label>搜尋場號或選手<input type="search" value={query} disabled={busy} placeholder="例如 42" onChange={e => {setQuery(e.target.value);setSelected("");setStartCourt("");setAction(null);setResult(null);}}/></label>
         {!term && <nav className="queue-dates" aria-label="待賽日期">{data.dates.map(date => <button key={date} type="button" disabled={busy} aria-pressed={day === date} onClick={() => {setDay(date);setSelected("");setStartCourt("");setAction(null);setResult(null);}}>{date === taipeiDate() ? "今天 · " : ""}{date.slice(5).replace("-", "/")}</button>)}</nav>}
         <label>選擇場次<select value={picked?.id ?? ""} disabled={busy || !queue.length} onChange={e => {setSelected(e.target.value);setStartCourt("");setAction(null);setResult(null);}}>
@@ -138,23 +151,12 @@ export default function LiveControl({ mode, revision, draftCount, api, onChanged
             <option value="">{available.length ? "選擇空場" : "目前沒有空場"}</option>
             {available.map(court => <option key={court.id} value={court.id}>{court.name}</option>)}
         </select></label>}
+        <div className="live-start-actions">
         <button className="primary" disabled={busy || draftCount > 0 || !data.published_revision || !picked?.eligible || !selectedCourt}
             onClick={() => {if (picked && selectedCourt) {setResult(null);setAction({court_id: selectedCourt.id, match: picked, action: "start"});}}}>確認開賽</button>
         <button disabled={busy || draftCount > 0 || !data.published_revision || !picked?.eligible} onClick={() => {if (picked) void openResult(picked, false);}}>補登完賽</button>
+        </div>
     </section>
-    <h3>場地看板</h3>
-    <div className="live-court-grid">{data.courts.map(court => {
-        const current = court.current;
-        return <article className={"live-court" + (current ? " is-playing" : "")} key={court.id}>
-            <div className="live-court-top"><h4>{court.name}</h4><span>{current ? "比賽中" : "空場"}</span></div>
-            {current && <><p className="live-division">{current.division} · 第 {current.code} 場</p>
-                <p><strong>{current.side_a} 對 {current.side_b}</strong><br/>實際開賽 {time(current.started_at)}</p>
-                <button className="primary" disabled={busy} onClick={() => {setResult(null);setScoring({court_id: court.id, court_name: court.name, match: current});}}>進入計分模式</button>
-                <button disabled={busy} onClick={() => void openResult(current, true)}>補登完賽</button>
-                <button disabled={busy} onClick={() => {setResult(null);setAction({court_id: court.id, match: current, action: "cancel"});}}>撤銷誤按開賽</button>
-            </>}
-        </article>;
-    })}</div>
     {result && <DirectResult key={result.match.id} match={result.match} busy={busy} onClose={() => setResult(null)}
         onSubmit={games => void run("live", {revision: result.revision, sequence: result.sequence, match_id: result.match.id, action: "record-result", games, ...(result.scoreVersion === undefined ? {} : {score_version: result.scoreVersion})})}/>}
     <p className="footnote">現場開賽不會修改預排場地。每次得分都會儲存，完賽確認後自動同步成績。</p>

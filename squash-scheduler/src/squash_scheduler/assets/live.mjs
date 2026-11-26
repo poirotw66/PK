@@ -160,7 +160,7 @@ function resultText(match) {
   if (!match.result) return match.status === 'completed' ? '結果待確認' : state(match);
   const result = match.result;
   const winner = [match.side_a, match.side_b].find(s => s.entry_id && s.entry_id === result.winner_entry_id);
-  return winner ? `${winner.name} 勝出` : outcomes[result.outcome] || '結果待確認';
+  return winner ? `${result.outcome && result.outcome !== "played" ? (outcomes[result.outcome] || "") + " · " : ""}${winner.name} 勝出` : outcomes[result.outcome] || '結果待確認';
 }
 
 function standingsGroup(group) {
@@ -174,7 +174,7 @@ function standingsGroup(group) {
   wrapper.tabIndex = 0;
   wrapper.setAttribute('aria-label', `${group.name}積分表，可左右捲動`);
   const table = node('table', null, 'standings-table'), thead = node('thead'), headers = node('tr');
-  ['選手','名次','積分','勝','敗','棄／退','勝局','負局'].forEach((label,i) => headers.append(node('th',label,i ? 'num' : '')));
+  ['選手','名次','積分','勝','敗','棄／退'].forEach((label,i) => headers.append(node('th',label,i ? 'num' : '')));
   thead.append(headers); table.append(thead);
   const body = node('tbody');
   for (const row of group.rows) {
@@ -184,10 +184,10 @@ function standingsGroup(group) {
     if (row.qualifies) name.append(node('span','晉級','qualifier-label'));
     if (row.status !== 'active') name.append(node('span',row.status === 'withdrawn' ? '已退賽' : '資格未啟用','muted entry-status'));
     tr.append(name);
-    [row.rank ?? (group.status === 'manual_review' ? '待核定' : '—'), row.points,row.wins,row.losses,row.forfeits,row.games_for,row.games_against].forEach(value => tr.append(node('td',String(value),'num')));
+    [row.rank ?? (group.status === 'manual_review' ? '待核定' : '—'), row.points,row.wins,row.losses,row.forfeits].forEach(value => tr.append(node('td',String(value),'num')));
     body.append(tr);
   }
-  table.append(body); wrapper.append(table); root.append(node('p','左右滑動查看勝敗、棄退與局數','standings-scroll-hint muted'),wrapper);
+  table.append(body); wrapper.append(table); root.append(node('p','左右滑動查看勝敗與棄退','standings-scroll-hint muted'),wrapper);
   root.append(node('p','敗含判敗；棄／退為另外列出的次數。尚未完成或待裁定時，不顯示確定名次。','standings-note muted'));
   return root;
 }
@@ -226,7 +226,7 @@ function card(match) {
     el.append(row);
   }
   const footer = node('div', null, 'match-footer');
-  footer.append(node('p', `${time(match.planned_start_at)} · ${label('courts', match.court_id)}`));
+  if (match.status !== 'completed') footer.append(node('p', `${time(match.planned_start_at)} · ${label('courts', match.court_id)}`));
   if (match.result) footer.append(node('p', (match.result.games.length ? match.result.games.map(g => `${g.side_a}:${g.side_b}`).join('、') + ' · ' : '') + (outcomes[match.result.outcome] || '結果待確認'), 'scoreline'));
   if (match.started_at) footer.append(node('p', `實際開賽 ${time(match.started_at, false)}`));
   else if (match.called_at) footer.append(node('p', `叫號 ${time(match.called_at, false)}`));

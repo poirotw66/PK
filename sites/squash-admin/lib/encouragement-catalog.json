@@ -1,0 +1,162 @@
+{
+  "source_revision": "ab6fcaea-4944-49c8-94fb-46cba670c200",
+  "divisions": [
+    {
+      "division_id": "86952da1-28a4-5299-8217-528ef8d7cf0c",
+      "division": "國中男子組",
+      "stage_id": "65c2f9c5-2cd3-5249-990e-c62153fbcdc1",
+      "first_round": [
+        {
+          "match_id": "420a1729-6893-541a-83f8-b663b0d0a4e9",
+          "side_a": {
+            "entry_id": "88c5c672-5bfb-5b59-8d9f-7e563aa85a16",
+            "player_id": "2d871480-6efa-5589-a398-b01a446e6522"
+          },
+          "side_b": {
+            "entry_id": "90ebf909-fae9-589e-a36f-8eeeab6dc961",
+            "player_id": "ff725ac7-6c94-52cf-ad42-4973c7dfd747"
+          }
+        },
+        {
+          "match_id": "d7e6af1b-bf5c-5806-b795-7660cf32dcd6",
+          "side_a": {
+            "entry_id": "43dd634c-a17a-516f-a664-cb89ad0eec88",
+            "player_id": "f1f96226-bc19-555f-b3f5-ad3e491c6780"
+          },
+          "side_b": {
+            "entry_id": "46f5b874-616d-514d-805a-1f5ca526ac09",
+            "player_id": "3079cbe9-6788-5513-a91c-0d06cde66284"
+          }
+        },
+        {
+          "match_id": "0ce91d75-3b6f-5ec5-8a6d-21fcc8b24c25",
+          "side_a": {
+            "entry_id": "2e88c722-5e98-5bf4-af10-5d8eed4174ce",
+            "player_id": "2bee7899-b5ac-5870-a337-ce408884ab44"
+          },
+          "side_b": {
+            "entry_id": "eed34dce-3856-51cd-97e9-ed3eb600d579",
+            "player_id": "6b7ebe76-f1a7-5ac0-9533-9febe632e886"
+          }
+        },
+        {
+          "match_id": "83480ba7-1dda-5e9e-ab0a-4ba9eaef7f66",
+          "side_a": {
+            "entry_id": "b1a9f4e8-4967-5278-b866-7f7a1a483a5d",
+            "player_id": "69ee1349-2bec-5dd6-a815-404371774601"
+          },
+          "side_b": {
+            "entry_id": "5de61fe4-ffdb-5430-952b-6ae213a42bb7",
+            "player_id": "39968b2f-1794-5fa3-8bf5-9e3a2b03f529"
+          }
+        },
+        {
+          "match_id": "db7ab6ee-9e01-5828-9473-32882c9753b4",
+          "side_a": {
+            "entry_id": "5b8f4f90-474e-52b3-b9ea-f6b43423c7bd",
+            "player_id": "f17dca34-7324-5d9e-81c5-eda769ea85fd"
+          },
+          "side_b": {
+            "entry_id": "9a92ad6e-701d-53f0-ad54-71a7f9a95869",
+            "player_id": "daf63c23-e068-5139-acfd-8a2f5e220456"
+          }
+        },
+        {
+          "match_id": "ec8263e4-2deb-56f7-b0f1-e802621dc74d",
+          "side_a": {
+            "entry_id": "983c1745-5e94-56e8-a707-a53f9218734c",
+            "player_id": "b327e85a-000a-5efa-a4b8-96be0d0e7f92"
+          },
+          "side_b": {
+            "entry_id": "bfd2e658-e9c6-5824-bced-e0c7f9c74c26",
+            "player_id": "2e884d29-4469-51c9-9ce3-a6a7c2800e07"
+          }
+        },
+        {
+          "match_id": "3d4c9c0a-f5f3-5637-8e63-9dc81bfe7a41",
+          "side_a": {
+            "entry_id": "01df4e9f-340c-5ed1-bfe1-685af755b118",
+            "player_id": "2798d2c6-5c64-5bb6-9662-93e8579c56de"
+          },
+          "side_b": {
+            "entry_id": "41ea3baa-e8ea-5b78-803d-81d7e8b2740a",
+            "player_id": "ce99bc1e-1c67-5e86-8705-072fc7c2826e"
+          }
+        },
+        {
+          "match_id": "589c7874-1013-5930-8f48-e21f7c788b51",
+          "side_a": {
+            "entry_id": "e439c5fc-45c1-520d-8d0b-f48d3ffeecfe",
+            "player_id": "778aede4-485d-59ea-8b17-e11be75bf34e"
+          },
+          "side_b": {
+            "entry_id": "e72e6007-25da-5b49-87a9-49358043b553",
+            "player_id": "cadd74d7-c55b-56d3-81b9-36b0ec051a6c"
+          }
+        }
+      ]
+    },
+    {
+      "division_id": "3a582de4-269d-5dfc-9183-67bdaf0756fc",
+      "division": "國中女子組",
+      "stage_id": "c8b44811-1c53-52bd-9c27-7a37d2ffae67",
+      "first_round": [
+        {
+          "match_id": "15e330d2-f109-5ddc-8ef7-42e5aefeeac1",
+          "side_a": {
+            "entry_id": "50f70aab-5ce7-5909-800d-fe7d89548f81",
+            "player_id": "ce21fe69-7b4a-50f3-a79f-37ce3a1f03c3"
+          },
+          "side_b": {
+            "entry_id": "a1213ce0-78b4-5184-a7b5-aea6c8ad92d1",
+            "player_id": "6c0b67d9-729a-58be-85dc-cba100a20e20"
+          }
+        },
+        {
+          "match_id": "63ff63d9-3855-57fa-87e4-dbe653ab6c66",
+          "side_a": {
+            "entry_id": "6287d95f-ef5b-5b82-add6-48d00e2cb77e",
+            "player_id": "e0cd43bd-10d1-5b37-9d02-e62c7b48951f"
+          },
+          "side_b": {
+            "entry_id": "38c3e30e-117e-5705-bcf2-dda9d269a391",
+            "player_id": "c3635535-49ba-5fb5-a67f-e7744f531f15"
+          }
+        },
+        {
+          "match_id": "5fe95303-9da4-59ce-b3da-e8c6465d3f3e",
+          "side_a": {
+            "entry_id": "c6ae014c-86a8-5cf6-8438-cf368a0d5751",
+            "player_id": "35086b96-ffbd-54c7-b828-e3b1307f1e01"
+          },
+          "side_b": {
+            "entry_id": "72db5892-cef7-5cd2-b77f-242a49ae55c3",
+            "player_id": "41109e33-ebec-5cff-9c59-389153f26244"
+          }
+        },
+        {
+          "match_id": "cf7b04b6-80de-5ccf-b008-57f946485b63",
+          "side_a": {
+            "entry_id": "e51580a9-5952-5e4b-bdf4-f52a4e9675e0",
+            "player_id": "fbe21c1b-ca6a-5cf8-8872-3987305d0407"
+          },
+          "side_b": {
+            "entry_id": "871f2cba-b65c-52ac-a833-d0e729831c6f",
+            "player_id": "53915b7a-e7a4-5c16-b978-c6d490af1c3d"
+          }
+        },
+        {
+          "match_id": "e86e0716-b50d-5b3f-9ea1-ab92b50b3041",
+          "side_a": {
+            "entry_id": "f00815ee-9047-542b-af6a-7c9f993318a8",
+            "player_id": "a9185fb6-4a6b-57fa-a195-6770aa28923e"
+          },
+          "side_b": {
+            "entry_id": "d4369d4e-44b1-5be4-a8f2-fd14b3c36091",
+            "player_id": "3b601f02-746e-52b4-a7be-72048b2ee325"
+          }
+        }
+      ]
+    }
+  ]
+}

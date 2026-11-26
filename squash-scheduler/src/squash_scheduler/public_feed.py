@@ -11,8 +11,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .domain.match_rules import effective_match_rules
 from .domain.models import Snapshot, canonical_hash
-from .domain.rankings import compute_rankings, effective_rules, resolve_side
+from .domain.rankings import compute_rankings, resolve_side
 from .domain.validation import validate
 from .operator_actions import state_fields
 from .storage.repository import Repository, RepositoryError
@@ -211,7 +212,8 @@ def project_snapshot(snapshot: Snapshot, workspace_id: str) -> PublicSnapshot:
                 side_a=a,
                 side_b=b,
                 result=public_result,
-                court_id=assignment.court_id if assignment else None,
+                court_id=facts.get("actual_court_id")
+                or (assignment.court_id if assignment else None),
                 planned_start_at=assignment.start_at.isoformat() if assignment else None,
                 called_at=facts.get("called_at"),
                 started_at=facts.get("started_at"),
@@ -255,9 +257,9 @@ def project_snapshot(snapshot: Snapshot, workspace_id: str) -> PublicSnapshot:
                 and getattr(m.side_b, "entry_id", None) in member_ids
             ]
             rules = [
-                results[m.id].get("rule_snapshot") or effective_rules(snapshot, stage.id)
+                results[m.id].get("rule_snapshot") or effective_match_rules(snapshot, m)
                 if m.id in results
-                else effective_rules(snapshot, stage.id)
+                else effective_match_rules(snapshot, m)
                 for m in matches
             ]
             scores = {(r["scoring"]["win_points"], r["scoring"]["loss_points"]) for r in rules}

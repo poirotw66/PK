@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from copy import deepcopy
 
-from .encouragement import ELIGIBLE_DIVISIONS, eligibility_report
+from .encouragement import division_eligible, eligibility_report
 from .models import (
     ID,
     Issue,
@@ -25,6 +25,7 @@ from .validation import approval_valid, target_basis
 
 KIND = "encouragement"
 ALGORITHM = "first-round-losers-shuffle-distributed-byes-v1"
+CLOUD_ALGORITHM = "first-round-losers-mulberry32-distributed-byes-v1"
 
 
 def is_encouragement(stage: Stage) -> bool:
@@ -46,7 +47,7 @@ def _source(snapshot: Snapshot, division_id: str) -> tuple[dict, str]:
     from .rankings import _validate_result, effective_rules
 
     division = next((d for d in snapshot.divisions if d.id == division_id), None)
-    if division is None or division.name not in ELIGIBLE_DIVISIONS or division.category != "school":
+    if division is None or not division_eligible(snapshot, division):
         raise ValueError("ENCOURAGEMENT_DIVISION_INVALID: only junior-high boys/girls qualify")
     plan = division.format_plan or {}
     if plan.get("encouragement_enabled") is False:
@@ -153,13 +154,24 @@ def _source(snapshot: Snapshot, division_id: str) -> tuple[dict, str]:
     return report, basis
 
 
-def _output(snapshot: Snapshot, division_id: str, seed: int) -> dict:
+def _output(snapshot: Snapshot, division_id: str, seed: int, algorithm: str = ALGORITHM) -> dict:
     if type(seed) is not int:
         raise ValueError("An integer draw seed is required")
     report, basis = _source(snapshot, division_id)
     entries = sorted(report["eligible_entry_ids"])
     shuffled = entries.copy()
-    random.Random(seed).shuffle(shuffled)
+    if algorithm == ALGORITHM:
+        random.Random(seed).shuffle(shuffled)
+    elif algorithm == CLOUD_ALGORITHM and 0 <= seed <= 0xFFFFFFFF:
+        value = seed
+        for index in range(len(shuffled) - 1, 0, -1):
+            value = (value + 0x6D2B79F5) & 0xFFFFFFFF
+            mixed = ((value ^ (value >> 15)) * (value | 1)) & 0xFFFFFFFF
+            mixed ^= (mixed + (((mixed ^ (mixed >> 7)) * (mixed | 61)) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            selected = int(((mixed ^ (mixed >> 14)) & 0xFFFFFFFF) / 4294967296 * (index + 1))
+            shuffled[index], shuffled[selected] = shuffled[selected], shuffled[index]
+    else:
+        raise ValueError("Unsupported encouragement shuffle algorithm or seed")
     capacity = 0 if len(entries) < 2 else 1 << (len(entries) - 1).bit_length()
     byes = capacity - len(entries) if capacity else 0
     bracket: list[str | None] = []
@@ -168,7 +180,7 @@ def _output(snapshot: Snapshot, division_id: str, seed: int) -> dict:
         if index < byes:
             bracket.append(None)
     output = {
-        "algorithm": ALGORITHM,
+        "algorithm": algorithm,
         "qualification_basis_hash": basis,
         "entry_ids": entries,
         "bracket_entry_ids": bracket if capacity else [],
@@ -240,6 +252,8 @@ def _record_geometry(record: dict) -> tuple[Stage, list[Match]]:
         label="鼓勵賽",
         order=100,
     )
+    if record.get("cloud_record"):
+        stage.rule_set_id = stable_id("cloud-encouragement-rules", division_id)
     if output["disposition"] == "no_competition":
         return stage, []
     source_ids = {
@@ -252,7 +266,11 @@ def _record_geometry(record: dict) -> tuple[Stage, list[Match]]:
     ]
     matches = elimination(sides, division_id, stage.id, bracket_capacity=output["bracket_capacity"])
     prefix = (
-        "國男鼓" if output["qualification_report"]["division_name"] == "國中男子組" else "國女鼓"
+        "國男鼓"
+        if output["qualification_report"]["division_name"] == "國中男子組"
+        else "國女鼓"
+        if output["qualification_report"]["division_name"] == "國中女子組"
+        else output["qualification_report"]["division_name"] + "鼓"
     )
     for number, match in enumerate(matches, 1):
         match.kind = "placement"
@@ -279,7 +297,12 @@ def _check_record(snapshot: Snapshot, record: dict) -> None:
         raise ValueError(
             "ENCOURAGEMENT_DRAW_UNAPPROVED: actor and explicit confirmation are required"
         )
-    if record["output"] != _output(snapshot, record["division_id"], record["random_seed"]):
+    if record["output"] != _output(
+        snapshot,
+        record["division_id"],
+        record["random_seed"],
+        record["output"].get("algorithm", ALGORITHM),
+    ):
         raise ValueError(
             "ENCOURAGEMENT_DRAW_STALE: qualification evidence changed; propose a new draw"
         )

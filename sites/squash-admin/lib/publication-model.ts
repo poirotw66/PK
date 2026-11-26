@@ -1,3 +1,4 @@
+import { resolvedEntryIds } from "./advancement-model";
 import { validateResult } from "./scoring";
 import type { ScoringResult } from "./scoring";
 import type { Tournament } from "./schedule/schema";
@@ -9,12 +10,16 @@ export type CourtLive = {
 export type LiveState = {
     courts: Record<string, CourtLive>;
     starts: Record<string, string>;
+    actual_courts?: Record<string, string>;
+    queues?: Record<string,string[]>;
 };
 export type PublicationPayload = {
     schedule: Tournament;
     live: LiveState;
 };
 export type PublicEnvelope = {
+    encouragement_draws?: NonNullable<Tournament["encouragement_draws"]>;
+    operation?: { kind: "reviewed-update" | "restore"; base_sequence: number };
     source_id: string;
     sequence: number;
     schedule_revision: string;
@@ -27,6 +32,8 @@ export type PublicEnvelope = {
         division: string;
         side_a: string;
         side_b: string;
+        side_a_entry_id?: string | null;
+        side_b_entry_id?: string | null;
         status: string;
         court_id: string | null;
         planned_start_at: string | null;
@@ -39,8 +46,9 @@ export function emptyLive(state: Tournament): LiveState {
 }
 export function envelope(payload: PublicationPayload, metadata: Omit<PublicEnvelope, "matches">): PublicEnvelope {
     const runningCourts = new Map(Object.entries(payload.live.courts).flatMap(([court, live]) => live.match_id ? [[live.match_id, court] as const] : []));
-    return { ...metadata, matches: payload.schedule.matches.map(match => ({
+    return { ...metadata, ...(payload.schedule.encouragement_draws?.length ? { encouragement_draws: payload.schedule.encouragement_draws } : {}), matches: payload.schedule.matches.map(match => ({
             id: match.id, code: match.code, division: match.division, side_a: match.side_a, side_b: match.side_b, status: match.status,
+            ...(match.slots ? { side_a_entry_id: resolvedEntryIds(payload.schedule, match).a, side_b_entry_id: resolvedEntryIds(payload.schedule, match).b } : {}),
             court_id: runningCourts.get(match.id) ?? match.assignment?.court ?? null,
             planned_start_at: match.assignment ? new Date(match.assignment.start * 60000).toISOString() : null,
             started_at: payload.live.starts[match.id] ?? null,
@@ -101,6 +109,7 @@ export function transitionLive(main: Tournament, published: PublicationPayload, 
         const previousStatus = match.status === "ready" ? "ready" : "planned";
         next.live.courts[courtId] = { match_id: match.id, started_at: now, previous_status: previousStatus };
         next.live.starts[match.id] = now;
+        (next.live.actual_courts ??= {})[match.id] = courtId;
         match.status = "in_progress";
         visible.status = "in_progress";
     }
@@ -115,9 +124,15 @@ export function transitionLive(main: Tournament, published: PublicationPayload, 
         }
         match.status = input.action === "cancel" ? current.previous_status ?? "planned" : "completed";
         visible.status = match.status;
-        if (input.action === "cancel")
+        if (input.action === "cancel") {
             delete next.live.starts[match.id];
+            if (next.live.actual_courts) delete next.live.actual_courts[match.id];
+        }
         next.live.courts[courtId] = { match_id: null, started_at: null, previous_status: null };
     }
     return { main: canonical, publication: next };
+}
+
+export function schedulePublicationSignature(state: Tournament) {
+    return JSON.stringify({ source_revision: state.source_revision, encouragement_draws: state.encouragement_draws, matches: state.matches.map(match => ({ id: match.id, assignment: match.assignment, status: match.status, side_a: match.side_a, side_b: match.side_b, players: match.players, entry_ids: match.entry_ids, result: match.result, allowed_outcomes: match.allowed_outcomes, scoring_rules: match.scoring_rules, championship: match.championship })) });
 }

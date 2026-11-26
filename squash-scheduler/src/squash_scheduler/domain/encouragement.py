@@ -6,6 +6,12 @@ ELIGIBLE_DIVISIONS = {"國中男子組", "國中女子組"}
 RULE_TEXT = "鼓勵賽僅限國中男、女組非種子球員，且須為籤表第一輪實際出賽的敗者；首輪輪空、棄權或未到場者不得參加。"
 
 
+def division_eligible(snapshot: Snapshot, division) -> bool:
+    if snapshot.config.get("runtime", {}).get("coach_competition_rules"):
+        return (division.format_plan or {}).get("template_id") == "single_elimination"
+    return division.name in ELIGIBLE_DIVISIONS and division.category == "school"
+
+
 def eligibility_report(snapshot: Snapshot, division_id: str) -> dict:
     division = next(d for d in snapshot.divisions if d.id == division_id)
     rules = {**snapshot.config.get("draw_defaults", {}), **division.draw_overrides}
@@ -51,13 +57,13 @@ def eligibility_report(snapshot: Snapshot, division_id: str) -> dict:
         status, reason, source = "ineligible", "DIVISION_NOT_ELIGIBLE", None
         if (division.format_plan or {}).get("encouragement_enabled") is False:
             reason = "ENCOURAGEMENT_DISABLED"
-        elif division.name in ELIGIBLE_DIVISIONS and division.category == "school":
+        elif division_eligible(snapshot, division):
             status, reason = "pending", "FIRST_ROUND_UNRESOLVED"
             if entry.status != "active":
                 status, reason = "ineligible", "ENTRY_NOT_ACTIVE"
-            elif entry.id in seed_ids:
+            elif entry.id in seed_ids and not snapshot.config.get("runtime", {}).get("coach_competition_rules"):
                 status, reason = "ineligible", "SEEDED_ENTRY"
-            elif not seeds_known:
+            elif not seeds_known and not snapshot.config.get("runtime", {}).get("coach_competition_rules"):
                 reason = "SEEDS_UNCONFIRMED"
             elif stage:
                 appearances = [
@@ -110,7 +116,7 @@ def eligibility_report(snapshot: Snapshot, division_id: str) -> dict:
     return {
         "division_id": division_id,
         "division_name": division.name,
-        "rule": RULE_TEXT,
+        "rule": "直接淘汰組首輪實際出賽敗者均可參加，包含種子；輪空、棄權或未到場者不適用。僅取鼓勵獎冠軍，不安排季殿賽。" if snapshot.config.get("runtime", {}).get("coach_competition_rules") else RULE_TEXT,
         "entries": rows,
         "eligible_entry_ids": [r["entry_id"] for r in rows if r["status"] == "eligible"],
         "pending_entry_ids": [r["entry_id"] for r in rows if r["status"] == "pending"],

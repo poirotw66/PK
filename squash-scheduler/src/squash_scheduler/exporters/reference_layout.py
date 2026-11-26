@@ -856,11 +856,14 @@ TEMPLATE = """<!doctype html><html lang="zh-Hant"><meta charset="utf-8">
 @page graph {size:A4 landscape;margin:12mm}
 @page schedule {size:A4 portrait;margin:12mm}
 *{box-sizing:border-box}body{margin:0;color:#000;font:12pt 'DFKai-SB','BiauKai',serif}
-.sheet{break-before:page}.sheet:first-child{break-before:auto}.graph-sheet{page:graph}
+.sheet{break-before:page}.sheet:first-child{break-before:auto}
+.graph-sheet{page:graph;display:flex;flex-direction:column;height:185mm;break-inside:avoid}
+.graph-sheet>h1,.graph-sheet>.graph-notes,.graph-sheet>.stamp{flex:none}
+.graph-sheet>.graph{flex:1;min-height:0}
 .schedule-sheet,.notice-sheet,.rules-sheet,.front-sheet{page:schedule}
 h1{font-size:24pt;text-align:center;margin:2mm 0 5mm;font-weight:bold}
 .graph-sheet h1{font-size:30pt;line-height:1.2;margin:0 0 4mm}
-.graph svg{display:block;width:100%;height:auto;max-height:145mm}
+.graph svg{display:block;width:100%;height:100%;max-height:145mm;object-fit:contain}
 .graph-notes{font-size:10pt;line-height:1.35;margin:1mm 0}
 .stamp{text-align:center;font-size:9pt;margin:2mm 0;color:#555}
 .date{font-size:21pt;font-weight:normal;letter-spacing:1px;margin-bottom:1mm}

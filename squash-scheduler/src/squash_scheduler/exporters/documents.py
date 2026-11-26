@@ -6,6 +6,7 @@ import base64
 import hashlib
 import io
 import json
+import re
 import shutil
 from html import escape
 from html.parser import HTMLParser
@@ -807,6 +808,22 @@ def render_pdf(html: str, path: Path, *, html_path: Path | None = None) -> dict:
             browser.close()
 
 
+def _require_pdf_body_pages(document: Any) -> None:
+    """Reject overflow pages consisting only of a draft stamp or page counter."""
+    for index, page in enumerate(document, 1):
+        body = [
+            line.strip()
+            for line in page.get_text().splitlines()
+            if line.strip()
+            and not re.fullmatch(r"\d+\s*/\s*\d+", line.strip())
+            and not line.strip().startswith(("審閱草案", "DRAFT 草案", "DRAFT "))
+        ]
+        if not body and not page.get_images():
+            raise ValueError(
+                f"PDF_LAYOUT_OVERFLOW: page {index} has no body content beyond its draft stamp or page number"
+            )
+
+
 def document_qa(model: dict, directory: Path) -> dict:
     import pymupdf
     import zxingcpp
@@ -861,6 +878,7 @@ def document_qa(model: dict, directory: Path) -> dict:
     # Opening bytes also guarantees Windows can remove a failed pending bundle
     # when validation raises before the PDF document is explicitly closed.
     doc = pymupdf.open(stream=(directory / "booklet.pdf").read_bytes(), filetype="pdf")
+    _require_pdf_body_pages(doc)
     text = "".join(doc.load_page(i).get_text() for i in range(doc.page_count))
     normalized = "".join(text.split())
     if reference:

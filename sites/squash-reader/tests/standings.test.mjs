@@ -31,9 +31,9 @@ test('three-way ties remain shared numeric ranks and only require a decision whe
  const s=fixture();let g=calculate(s);assert.equal(g.status,'provisional');assert.deepEqual(g.rows.map(r=>r.rank),[1,1,1]);
  finish(s,'ab','a');finish(s,'bc','b');finish(s,'ac','c');g=calculate(s);assert.equal(g.status,'manual_review');assert.deepEqual(g.rows.map(r=>r.points),[3,3,3]);assert.deepEqual(g.rows.map(r=>r.rank),[1,1,1]);assert.equal(g.tie_groups[0].length,3);
 });
-test('two-player ties without a direct result use game difference then point difference',()=>{
+test('point ties without a mutual result remain shared despite different outside scores',()=>{
  const s=fixture(['a','b','c','d']);finish(s,'ac','a');finish(s,'bd','b','played',[{side_a:11,side_b:9},{side_a:11,side_b:9}]);
- const g=calculate(s);assert.equal(g.rows[0].entry_id,'a');assert.equal(g.rows[1].entry_id,'b');assert.equal(g.rows[0].points,g.rows[1].points);
+ const g=calculate(s);assert.equal(g.rows[0].entry_id,'a');assert.equal(g.rows[1].entry_id,'b');assert.equal(g.rows[0].points,g.rows[1].points);assert.equal(g.rows[0].rank,g.rows[1].rank);assert.deepEqual(g.tie_groups[0],['a','b']);
  s.matches.find(m=>m.id==='bd').result.games=[{side_a:11,side_b:0},{side_a:0,side_b:11},{side_a:11,side_b:0}];
  assert.equal(calculate(s).rows[0].entry_id,'a');
 });
@@ -57,4 +57,50 @@ test('unrelated workspaces and previously published manual decisions are preserv
 test('validated played games count when synthetic stage target defaults are unset',()=>{
  const s=fixture();finish(s,'ab','b');const config=structuredClone(configuration);config.stages.rr.points_to_win_game=null;
  const winner=recalculateStandings(s,config).standings[0].rows.find(row=>row.entry_id==='b');assert.equal(winner.games_for,2);assert.equal(winner.games_against,0);
+});
+
+test('tied subgroup ratios ignore every result against outside players',async()=>{
+ const {tiedSubgroupOrder}=await import('../standings.mjs');
+ const record=(a,b,games)=>({side_a:{entry_id:a},side_b:{entry_id:b},result:{outcome:'played',games:games.map(([side_a,side_b])=>({side_a,side_b}))}});
+ const internal=[record('a','b',[[11,8],[11,8]])];
+ const outside=Array.from({length:12},()=>record('a','outsider',[[0,11],[0,11]]));
+ assert.deepEqual(tiedSubgroupOrder(['b','a'],[...internal,...outside],rules),{ordered:['a','b'],ties:[]});
+});
+test('tied subgroup uses game quotient before point quotient',async()=>{
+ const {tiedSubgroupOrder}=await import('../standings.mjs');
+ const record=(a,b,games)=>({side_a:{entry_id:a},side_b:{entry_id:b},result:{outcome:'played',games:games.map(([side_a,side_b])=>({side_a,side_b}))}});
+ // A wins 2:0 over B, B wins 2:1 over C, C wins 2:1 over A.
+ // Game ratios are A=3/2, B=2/2, C=3/3; B has better point ratio than A.
+ const matches=[record('a','b',[[11,9],[11,9]]),record('b','c',[[11,0],[0,11],[11,0]]),record('c','a',[[11,0],[0,11],[11,0]])];
+ assert.deepEqual(tiedSubgroupOrder(['b','c','a'],matches,rules).ordered,['a','c','b']);
+});
+test('equal game quotients use points only among the tied players',async()=>{
+ const {tiedSubgroupOrder}=await import('../standings.mjs');
+ const record=(a,b,score)=>({side_a:{entry_id:a},side_b:{entry_id:b},result:{outcome:'played',games:[{side_a:11,side_b:score},{side_a:11,side_b:score}]}});
+ const matches=[record('a','b',0),record('b','c',8),record('c','a',9)];
+ assert.deepEqual(tiedSubgroupOrder(['c','b','a'],matches,rules),{ordered:['a','c','b'],ties:[]});
+});
+test('equal game and point quotients retain an unresolved subgroup',async()=>{
+ const {tiedSubgroupOrder}=await import('../standings.mjs');
+ const matches=[['a','b'],['b','c'],['c','a']].map(([a,b])=>({side_a:{entry_id:a},side_b:{entry_id:b},result:{outcome:'played',games:[{side_a:11,side_b:5},{side_a:11,side_b:5}]}}));
+ assert.deepEqual(tiedSubgroupOrder(['a','b','c'],matches,rules),{ordered:['a','b','c'],ties:[['a','b','c']]});
+ assert.deepEqual(tiedSubgroupOrder(['a','b'],[],rules).ties,[['a','b']]);
+});
+
+
+test('a tied points bucket preserves numeric ranks for each unresolved subgroup',()=>{
+ const config=structuredClone(configuration);
+ config.stages.rr.scoring={win_points:1,loss_points:1};
+ config.stages.rr.double_forfeit_rule.side_a_points=1;
+ config.stages.rr.double_forfeit_rule.side_b_points=1;
+ for(const topTie of [true,false]){
+  const s=fixture();
+  if(topTie){finish(s,'ab',null,'double_forfeit');finish(s,'ac','a');finish(s,'bc','b');}
+  else{finish(s,'ab','a');finish(s,'ac','a');finish(s,'bc',null,'double_forfeit');}
+  const before=structuredClone(s),g=recalculateStandings(s,config).standings[0];
+  assert.deepEqual(g.rows.map(row=>row.points),[2,2,2]);
+  assert.deepEqual(g.rows.map(row=>row.rank),topTie?[1,1,3]:[1,2,2]);
+  assert.deepEqual(g.tie_groups,topTie?[['a','b']]:[['b','c']]);
+  assert.equal(g.status,'manual_review');assert.deepEqual(s,before);
+ }
 });

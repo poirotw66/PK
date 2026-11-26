@@ -9,7 +9,7 @@ from .models import Snapshot, canonical_hash
 
 def refresh_rule_snapshots(snapshot: Snapshot, match_ids: set[str] | None = None) -> None:
     from ..scheduling.constraints import effective_timing
-    from .rankings import effective_rules
+    from .match_rules import effective_match_rules
 
     stages = {s.id: s for s in snapshot.stages}
     for match in snapshot.matches:
@@ -22,7 +22,7 @@ def refresh_rule_snapshots(snapshot: Snapshot, match_ids: set[str] | None = None
             continue
         stage = stages[match.stage_id]
         expanded = {
-            "match_rules": effective_rules(snapshot, stage.id),
+            "match_rules": effective_match_rules(snapshot, match),
             "timing": effective_timing(snapshot, match, frozen=False),
             "inheritance": {
                 "division_id": match.division_id,

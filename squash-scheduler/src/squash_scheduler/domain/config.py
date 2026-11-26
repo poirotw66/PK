@@ -151,6 +151,7 @@ class PreferredScheduleWindow(TimeRange):
 
 
 class Runtime(Model):
+    coach_competition_rules: bool = Field(default=False, strict=True)
     keep_round_robin_groups_same_day: bool = Field(default=False, strict=True)
     keep_elimination_rounds_in_order: bool = Field(default=False, strict=True)
     batch_slot_minutes: int = Field(default=15, gt=0, le=1440, strict=True)

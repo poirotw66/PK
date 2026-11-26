@@ -5,6 +5,31 @@ reader source. It starts with a fresh Git history. Original rosters, player name
 PDFs, spreadsheets, event workspaces, public snapshots, production identities,
 credentials, build output, and operational history are not included.
 
+## Local preparation and cloud operation
+
+The local interface now opens an empty workspace with a guided setup flow for
+Excel (`.xlsx`), Word (`.docx`), and text PDFs. Review names, shared player
+identities, divisions, event settings, and rules before creating the event.
+Use the existing operator console for formats, approved draws, scheduling, and
+document exports. Cloud Sites continue to handle live operation and public scores.
+
+With Python 3 and uv installed, run:
+
+```sh
+python3 scripts/start_local.py
+```
+
+Open `http://127.0.0.1:8765/`. Windows users can run `START-LOCAL.cmd`;
+Linux/macOS users can run `sh START-LOCAL.sh`. Use a fresh workspace for another
+event: `python3 scripts/start_local.py --workspace squash-scheduler/tournaments/new-event`.
+The first run downloads the locked dependencies and Python 3.13 if needed.
+
+The `/setup` page exports an initial cloud schedule and reviews cloud return files.
+The updated administration source adds primary-administrator download and guarded
+re-import of a local replan. Updating this repository does not deploy those changes
+to an existing Site. See the [local-first workflow](squash-scheduler/docs/local-first-workflow.md)
+for the file contracts, current cloud rule profile, and verification commands.
+
 ## Live sites
 
 - [Tournament administration](https://pk-squash-admin.poirotw66.chatgpt.site/) — requires an authorized ChatGPT account.
@@ -51,3 +76,5 @@ private inputs and are not part of the portable CI selection.
 
 See [reader instructions](sites/squash-reader/README.md). Runtime deployment
 configuration and sync credentials must be supplied locally for your own site.
+
+本輪成績更正、晉級、備份、地端匯入與完整驗證說明見 [專案優化紀錄](squash-scheduler/docs/project-optimization-20261125.md)。

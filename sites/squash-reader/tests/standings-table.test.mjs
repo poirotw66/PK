@@ -21,14 +21,14 @@ test('cloud results awaiting review keep the table and names without stale stati
   fixture.status = 'manual_review';
   const result = standingsGroup(fixture);
   assert.equal(find(result, 'table').length, 1);
-  assert.equal(find(result, 'th').length, 8);
+  assert.equal(find(result, 'th').length, 6);
   const cells = find(result, 'td');
   assert.equal(find(cells[0], 'span')[0].text, 'SyntheticPlayer001');
-  assert.deepEqual(Array.from(cells.slice(1), cell => cell.text), ['待核定', '—', '—', '—', '—', '—', '—']);
+  assert.deepEqual(Array.from(cells.slice(1), cell => cell.text), ['待核定', '—', '—', '—', '—']);
   assert.equal(find(result, 'span').filter(span => span.className === 'qualifier-label').length, 0);
 });
 test('reviewed and ordinary provisional standings retain published statistics', () => {
   const result = standingsGroup(group());
-  assert.deepEqual(Array.from(find(result, 'td').slice(1), cell => cell.text), ['1', '99', '88', '77', '66', '55', '44']);
+  assert.deepEqual(Array.from(find(result, 'td').slice(1), cell => cell.text), ['1', '99', '88', '77', '66']);
   assert.equal(find(result, 'span').filter(span => span.className === 'qualifier-label').length, 1);
 });

@@ -36,3 +36,6 @@
 **/*.pyc
 **/*.egg-info/
 .DS_Store
+
+# Local browser profiles and design verification output
+**/.taste-skill/

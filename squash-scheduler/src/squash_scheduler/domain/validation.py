@@ -349,7 +349,7 @@ def validate(snapshot: Snapshot, gate: str = "G4") -> dict[str, Any]:
                     )
                 )
         from .config import MatchRules
-        from .rankings import effective_rules
+        from .match_rules import effective_match_rules
 
         required_fields = (
             "best_of_games",
@@ -365,9 +365,7 @@ def validate(snapshot: Snapshot, gate: str = "G4") -> dict[str, Any]:
         for match in snapshot.matches:
             if match.status in {"cancelled", "excluded"}:
                 continue
-            rules = (match.rule_snapshot or {}).get("match_rules") or effective_rules(
-                snapshot, match.stage_id
-            )
+            rules = (match.rule_snapshot or {}).get("match_rules") or effective_match_rules(snapshot, match)
             if contains_demo_rule(rules):
                 issues.append(
                     issue(

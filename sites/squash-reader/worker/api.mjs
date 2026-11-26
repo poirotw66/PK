@@ -112,7 +112,7 @@ export async function handle(request, env) {
     const object=await env.BUCKET?.get(STORAGE_PREFIX+path.slice('/public/'.length));
     if (object) return new Response(request.method==='HEAD' ? null : object.body,{headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=31536000, immutable'}});
   }
-  const pages={'/':'live','/live':'live','/schedule':'schedule','/brackets':'bracket','/standings':'standings'};
+  const pages={'/':'schedule','/live':'results','/results':'results','/schedule':'schedule','/brackets':'bracket','/standings':'bracket'};
   const page=pages[path.replace(/\/$/,'')||'/'];
   const asset=ASSETS[page?'/pages/'+page+'.html':path];
   if (!asset) return json({error:'Not found'},404);

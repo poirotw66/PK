@@ -55,6 +55,9 @@ def create_server(
         "poll_interval_ms": interval,
     }
     service = OperatorService(repository)
+    from .local_workflow import LocalWorkflow
+
+    workflow = LocalWorkflow(service)
     token = secrets.token_urlsafe(32)
 
     class Handler(BaseHTTPRequestHandler):
@@ -114,10 +117,14 @@ def create_server(
             if not self._allowed(path.startswith("/api/")):
                 return
             try:
-                if path == "/":
+                if path in {"/", "/setup", "/operator"}:
                     html = (
                         files("squash_scheduler.assets")
-                        .joinpath("operator.html")
+                        .joinpath(
+                            "setup.html"
+                            if path == "/setup" or not workflow.initialized()
+                            else "operator.html"
+                        )
                         .read_text("utf-8")
                     )
                     boot = json.dumps({"token": token}).replace("<", "\\u003c")
@@ -167,6 +174,8 @@ def create_server(
                     "/workload-ui.js",
                     "/format-ui.js",
                     "/operator.css",
+                    "/setup.js",
+                    "/setup.css",
                 }:
                     data = files("squash_scheduler.assets").joinpath(path[1:]).read_bytes()
                     kind = "text/javascript" if path.endswith(".js") else "text/css"
@@ -179,6 +188,18 @@ def create_server(
                         .read_bytes(),
                         "font/woff2",
                     )
+                elif path == "/api/setup-state":
+                    self._json(200, workflow.state())
+                elif path == "/api/cloud-export":
+                    from .cloud_handoff import export_cloud_schedule
+
+                    with service.guard:
+                        self._json(200, export_cloud_schedule(service.repo))
+                elif path == "/api/advancement-sources":
+                    from .cloud_handoff import export_advancement_sources
+
+                    with service.guard:
+                        self._json(200, export_advancement_sources(service.repo))
                 elif path == "/api/state":
                     self._json(200, service.state())
                 elif path == "/api/workload":
@@ -224,6 +245,31 @@ def create_server(
             try:
                 length = int(self.headers.get("Content-Length", "0"))
                 path = urlsplit(self.path).path
+                if path in {"/api/intake", "/api/font"}:
+                    limit = (32 if path == "/api/font" else 25) * 1024 * 1024
+                    if (
+                        not 0 < length <= limit
+                        or self.headers.get_content_type() != "application/octet-stream"
+                    ):
+                        raise ValueError("請上傳大小限制內的檔案內容。")
+                    raw = self.rfile.read(length)
+                    if len(raw) != length:
+                        raise ValueError("檔案上傳不完整。")
+                    if path == "/api/intake":
+                        name = parse_qs(urlsplit(self.path).query).get("filename", [""])[0]
+                        result = workflow.upload(name, raw)
+                    else:
+                        encoded = self.headers.get("X-Upload-Metadata", "")
+                        if len(encoded) > 8192:
+                            raise ValueError("字型操作資料過長。")
+                        metadata = json.loads(
+                            base64.b64decode(encoded, validate=True).decode("utf-8")
+                        )
+                        if not isinstance(metadata, dict):
+                            raise ValueError("字型操作資料須為物件。")
+                        result = workflow.font(raw, metadata)
+                    self._json(200, result)
+                    return
                 if path == "/api/restore-preview":
                     if (
                         not 0 < length <= 32 * 1024 * 1024
@@ -239,7 +285,13 @@ def create_server(
                     self._json(200, service.restore_preview(self.rfile.read(length), metadata))
                     return
                 if (
-                    not 0 < length <= 262144
+                    not 0
+                    < length
+                    <= (
+                        2 * 1024 * 1024
+                        if path in {"/api/setup-preview", "/api/cloud-return-preview"}
+                        else 262144
+                    )
                     or self.headers.get_content_type() != "application/json"
                 ):
                     self._json(400, {"error": "請以 JSON 傳送有效的賽務資料。"})
@@ -247,7 +299,13 @@ def create_server(
                 request = json.loads(self.rfile.read(length))
                 if not isinstance(request, dict):
                     raise TypeError("操作資料須為物件。")
-                if path == "/api/preview":
+                if path == "/api/setup-preview":
+                    result = workflow.preview(request)
+                elif path == "/api/setup-confirm":
+                    result = workflow.confirm(request)
+                elif path == "/api/cloud-return-preview":
+                    result = service.preview({**request, "action": "cloud_return"})
+                elif path == "/api/preview":
                     result = service.preview(request)
                 elif path == "/api/confirm":
                     result = service.confirm(request)
@@ -284,7 +342,8 @@ def create_server(
 
 
 def serve(repository: Repository, port: int = 8765, *, reader_config: dict | None = None) -> None:
-    repository.load()
+    if (repository.root / "working" / "current.json").exists():
+        repository.load()
     server = create_server(repository, port, reader_config=reader_config)
     print(f"本地賽務操作：http://127.0.0.1:{server.server_port}/", flush=True)
     print(f"即時閱讀頁：http://127.0.0.1:{server.server_port}/live/", flush=True)

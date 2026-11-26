@@ -1,7 +1,7 @@
 """Reviewed competition formats and match estimates for the local operator."""
 
 from .domain.draws import draw_inputs
-from .domain.encouragement import ELIGIBLE_DIVISIONS
+from .domain.encouragement import division_eligible
 from .domain.formats import active_entries, format_basis, pending_format_divisions, validate_formats
 from .domain.matches import dependency_map, generate_matches
 from .domain.models import Division, PoolRankSide, Snapshot, canonical_hash, stable_id
@@ -13,8 +13,8 @@ TEMPLATES = {"round_robin", "single_elimination", "pools_knockout"}
 NOTICE_PENDING = "賽制已確認，請完成待處理組別的抽籤與籤表確認，再重新排程。"
 
 
-def _encouragement_allowed(division: Division) -> bool:
-    return division.name in ELIGIBLE_DIVISIONS and division.category == "school"
+def _encouragement_allowed(snapshot: Snapshot, division: Division) -> bool:
+    return bool(snapshot.config.get("runtime", {}).get("coach_competition_rules")) or division_eligible(snapshot, division)
 
 
 def _affected(snapshot: Snapshot, division: Division) -> tuple[set[str], set[str], set[str]]:
@@ -67,7 +67,7 @@ def format_state(snapshot: Snapshot, division: Division) -> dict:
     pools = [{"size": size, "advances": advance} for size, advance in zip(sizes, advances)]
     placement = plan.get("placement_matches", [])
     bronze = "bronze" in placement
-    allowed = _encouragement_allowed(division)
+    allowed = _encouragement_allowed(snapshot, division)
     encouragement = (
         allowed and template == "single_elimination" and plan.get("encouragement_enabled", True)
     )
@@ -183,8 +183,8 @@ def configure_format(
         or type(encouragement) is not bool
     ):
         raise ValueError("請選擇有效的賽制及選項。")
-    if encouragement and (template != "single_elimination" or not _encouragement_allowed(division)):
-        raise ValueError("鼓勵賽僅限採直接單淘汰的國中男、女組。")
+    if encouragement and (template != "single_elimination" or not _encouragement_allowed(snapshot, division)):
+        raise ValueError("鼓勵賽僅限符合已確認規則的直接淘汰組別。")
     if template != "pools_knockout" and pools:
         raise ValueError("只有分池賽制可以設定小組。")
     if any(

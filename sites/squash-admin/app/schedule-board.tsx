@@ -58,7 +58,7 @@ export default function ScheduleBoard({ state, draft, day, court, matches, busy,
     const matchingIds = new Set(matches.map(match => match.id));
     const activeCourt = court || state.courts[0].id;
     const shownCourts = state.courts.filter(row => isMobile ? row.id === activeCourt : !court || row.id === court);
-    const slotHeight = 200;
+    const slotHeight = 112;
     const displayGrid = state.grid * Math.ceil(15 / state.grid);
     const first = parseLocal(day + "T" + state.first_start);
     const last = parseLocal(day + "T" + state.last_start);
@@ -151,7 +151,7 @@ export default function ScheduleBoard({ state, draft, day, court, matches, busy,
     </>;
     return <div className="board-workbench">
     <section ref={boardMain} className="board-main" aria-label="場地空檔與比賽時段">
-      <div className="board-instructions"><p><strong>先點比賽，再點空檔</strong><span>綠色位置已檢查選手休息與場地限制；每 {displayGrid} 分鐘一格，其他時間可選建議空檔；儲存前仍會檢查整份賽程。</span></p><div className="board-legend"><span className="legend-free">空檔</span><span className="legend-valid">可移入</span><span className="legend-completed">✓ 已完成</span><span className="legend-playing">比賽中</span><span className="legend-muted">其他篩選外場次</span></div></div>
+      <div className="board-instructions"><p><strong>先點比賽，再點空檔</strong><span>每 {displayGrid} 分鐘一格；儲存前會再檢查整份賽程。</span></p><div className="board-legend"><span className="legend-free">空檔</span><span className="legend-valid">可移入</span><span className="legend-completed">✓ 已完成</span><span className="legend-playing">比賽中</span><span className="legend-muted">其他篩選外場次</span></div></div>
       {isMobile && <>
         <nav className="mobile-courts" aria-label="切換場地">{state.courts.map(row => <button key={row.id} aria-pressed={activeCourt === row.id} onClick={() => onCourtChange(row.id)} title={row.name}><span>{row.name}</span><small>{visible.filter(match => match.assignment?.court === row.id).length} 場</small></button>)}</nav>
         {selected && <div className="mobile-selection"><div><strong>第 {selected.code} 場</strong><span>{selected.side_a} 對 {selected.side_b}</span></div><button disabled={busy} onClick={() => setSheetOpen(true)}>建議空檔 <b>{availableCount}</b></button><button className="selection-close" aria-label="取消選取場次" onClick={() => { setSelectedId(null); setFeedback(""); setBlockedPosition(null); }}>×</button></div>}{selected && toolsActions}

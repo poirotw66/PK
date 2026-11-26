@@ -111,7 +111,7 @@ function choosePlayer(name) {
   $('search').blur();
   selectedPlayer = name;
   $('search').value = name;
-  for (const id of ['division', 'date']) $(id).value = '';
+  $('division').value = '';
   view = 'schedule';
   filterChanged();
   focusPersonalSummary();
@@ -125,11 +125,10 @@ function searchChanged() {
   const query = $('search').value.trim();
   selectedPlayer = knownPlayers.includes(query) ? query : '';
   if (selectedPlayer) {
-    for (const id of ['division', 'date']) $(id).value = '';
+    $('division').value = '';
     view = 'schedule';
   }
   filterChanged();
-  if (selectedPlayer && !matchMedia('(max-width:640px)').matches) focusPersonalSummary();
 }
 
 function syncPersonalSchedule() {
@@ -153,7 +152,7 @@ function syncPersonalSchedule() {
   const summary = $('personal-summary');
   summary.replaceChildren();
   summary.hidden = !selectedPlayer || page!=='schedule';
-  $('schedule-heading').textContent = page==='bracket'?'選擇組別查看晉級':page==='standings'?'選擇組別查看積分':selectedPlayer?'個人賽程':'賽程與成績';
+  $('schedule-heading').textContent = page==='bracket'?'各組賽程':page==='results'?'完賽成績':selectedPlayer?'個人賽程':'預定時間';
   personalChanges = new Map();
   if (!selectedPlayer) return;
   const all = data.matches.filter(match => matchesPlayer(match, selectedPlayer));
@@ -173,7 +172,7 @@ function syncPersonalSchedule() {
 
 function resetFilters() {
   selectedPlayer = '';
-  for (const id of ['search', 'division', 'date']) $(id).value = '';
+  for (const id of ['search', 'division']) $(id).value = '';
   filterChanged();
 }
 
@@ -184,18 +183,6 @@ function showShareFeedback(message, url = '') {
   $('share-link').value = url;
 }
 
-$('share-query').addEventListener('click', async () => {
-  writeQueryState();
-  const url = location.href;
-  try {
-    await navigator.clipboard.writeText(url);
-    showShareFeedback('已複製連結，可分享目前的選手、日期、組別與檢視。');
-  } catch {
-    showShareFeedback('請複製下方連結，即可分享目前查詢。', url);
-    $('share-link').focus();
-    $('share-link').select();
-  }
-});
 window.addEventListener('storage', event => {
   if (!event.key || event.key.startsWith('pk-schedule-seen-v1:')) {
     seenSchedules?.invalidate();
@@ -212,23 +199,21 @@ window.addEventListener('popstate', () => {
 
 function syncBrowseControls() {
   applyPageUi();
-  if(page==='live') renderLiveNow();
-  paintLiveScores();
-  void refreshLiveScores();
-  syncMobileControls();
   document.body.dataset.view = view;
   syncPersonalSchedule();
   const dates = [...new Set(data.matches.map(m => day(m.planned_start_at)).filter(Boolean))].sort();
+  if(page==='bracket')$('date').value='';
+  else if(!dates.includes($('date').value))$('date').value=preferredEventDate(dates,new Date(),data.timezone);
   const selected = $('date').value;
   const signature = JSON.stringify([dates, selected]);
   if ($('day-tabs').dataset.signature !== signature) {
     $('day-tabs').dataset.signature = signature;
-    $('day-tabs').replaceChildren(...['', ...dates].map((date, index) => {
+    $('day-tabs').replaceChildren(...dates.map((date, index) => {
       const button = node('button', null, 'day-tab');
       button.type = 'button';
       button.setAttribute('aria-pressed', String(date === selected));
-      button.append(node('span', date ? `第 ${index} 天` : '完整賽事', 'day-caption'));
-      button.append(node('strong', date ? date.slice(5).replace('-', ' / ') : '全部日期'));
+      button.append(node('span', `第 ${index + 1} 天`, 'day-caption'));
+      button.append(node('strong', date.slice(5).replace('-', ' / ')));
       button.addEventListener('click', () => {
         $('date').value = date;
         filterChanged();
@@ -237,7 +222,7 @@ function syncBrowseControls() {
     }));
   }
   $('clear-search').hidden = !$('search').value;
-  $('reset-filters').hidden = !['search', 'division', 'date'].some(id => $(id).value);
+  $('reset-filters').hidden = !['search', 'division'].some(id => $(id).value);
   const context=[];
   if(['bracket','standings'].includes(page)) {
     if($('search').value)context.push('選手：'+$('search').value);
@@ -257,72 +242,42 @@ $('clear-search').addEventListener('click', () => {
 });
 $('reset-filters').addEventListener('click', resetFilters);
 
+function chooseDivision(id) {
+  selectedPlayer='';$('search').value='';$('division').value=id;view='schedule';filterChanged();
+}
+function scheduleTicket(match) {
+  const ticket=node('article',null,'match-ticket');ticket.dataset.matchId=match.id;
+  ticket.setAttribute('aria-label',`第 ${match.code} 場`);
+  const head=node('div',null,'ticket-head');
+  head.append(node('strong',`第 ${match.code} 場`));
+  if(match.planned_start_at){const planned=node('time',`預定 ${time(match.planned_start_at,false)}`,'ticket-planned');planned.dateTime=match.planned_start_at;head.append(planned);}
+  const competition=node('p',null,'ticket-competition'),division=node('button',label('divisions',match.division_id),'match-filter-link');
+  division.type='button';division.setAttribute('aria-label',`篩選${label('divisions',match.division_id)}`);division.addEventListener('click',()=>chooseDivision(match.division_id));
+  competition.append(division,node('span',label('stages',match.stage_id)));
+  const players=node('div',null,'ticket-players');
+  for(const [key,side]of[['a',match.side_a],['b',match.side_b]]){
+    const player=node('div',null,'ticket-player'),name=node(side.entry_id&&side.resolution==='confirmed'?'button':'span',side.name,side.name===selectedPlayer?'player-name match-filter-link is-selected-player':'player-name match-filter-link');
+    if(name.tagName==='BUTTON'){name.type='button';name.setAttribute('aria-label',`篩選選手${side.name}`);name.addEventListener('click',()=>choosePlayer(side.name));}
+    player.append(name);
+    if(match.result?.games.length&&(match.result.outcome??'played')==='played'){const wins=match.result.games.filter(game=>key==='a'?game.side_a>game.side_b:game.side_b>game.side_a).length;player.append(node('strong',String(wins),'player-score'));}
+    players.append(player);
+  }
+  const foot=node('div',null,'ticket-foot');foot.append(node('span',match.result?resultText(match):state(match),'ticket-status'));
+  ticket.append(head,competition,players,foot);
+  if(match.result?.games.length)ticket.append(node('p',match.result.games.map(game=>`${game.side_a}:${game.side_b}`).join(' · '),'ticket-scoreline'));
+  if(personalChanges.has(match.id))appendPersonalChange(ticket,personalChanges.get(match.id));
+  return ticket;
+}
 function schedule(matches) {
-  const root = node('section', null, 'schedule-board');
-  const courtOrder = new Map(data.courts.map(court => court.id).sort((a,b) => label('courts',a).localeCompare(label('courts',b),undefined,{numeric:true})).map((id,index) => [id,index]));
-  const ordered = orderedMatches(matches, courtOrder);
-  const slotKeyFor = match => (day(match.planned_start_at) || '未排程') + 'T' + time(match.planned_start_at, false);
-  if (pendingHash) {
-    const index = ordered.findIndex(m => `reader-schedule-day-${day(m.planned_start_at) || '未排程'}` === hashId());
-    if (index >= limit) limit = index + 40;
-  }
-  let previousDay = null, previousTime = null, grid;
-  for (const match of ordered.slice(0, limit)) {
-    const date = day(match.planned_start_at) || '未排程';
-    if (date !== previousDay) {
-      const heading = navigationTarget(node('h2', date, 'schedule-day-heading'), `day-${date}`, '賽程日期', date);
-      root.append(heading);
-      previousDay = date;
-      previousTime = null;
-    }
-    const slotKey = slotKeyFor(match);
-    if (slotKey !== previousTime) {
-      const slot = node('section', null, 'time-slot');
-      slot.setAttribute('aria-label', `${date} ${time(match.planned_start_at, false)}`);
-      const rail = node('div', null, 'slot-clock');
-      const clock = node('time', time(match.planned_start_at, false));
-      if (match.planned_start_at) clock.dateTime = match.planned_start_at;
-      rail.append(clock);
-      grid = node('div', null, 'ticket-grid');
-      slot.append(rail, grid);
-      root.append(slot);
-      previousTime = slotKey;
-    }
-    const ticket = node('article', null, 'match-ticket');
-    const courtLabel = match.status === 'in_progress' && match.court_id ? label('courts', match.court_id) : '';
-    const matchLabel = `第 ${match.code} 場`;
-    ticket.setAttribute('aria-label', courtLabel ? `${matchLabel} · ${courtLabel}` : matchLabel);
-    ticket.dataset.matchId = match.id;
-    const head = node('div', null, 'ticket-head');
-    const clock = node('time', time(match.planned_start_at, false), 'ticket-time sr-only');
-    if (match.planned_start_at) clock.dateTime = match.planned_start_at;
-    head.append(clock);
-    if (courtLabel) head.append(node('span', courtLabel, 'court-tag'));
-    const competition = node('p', `${label('divisions', match.division_id)} · ${label('stages', match.stage_id)}`, 'ticket-competition');
-    const players = node('div', null, 'ticket-players');
-    for (const [key, side] of [['a', match.side_a], ['b', match.side_b]]) {
-      const player = node('div', null, 'ticket-player');
-      player.append(node('span', key === 'a' ? 'A' : 'B', 'player-number'), node('span', side.name, side.name === selectedPlayer ? 'player-name is-selected-player' : 'player-name'));
-      if (match.result?.games.length) {
-        const wins = match.result.games.filter(game => key === 'a' ? game.side_a > game.side_b : game.side_b > game.side_a).length;
-        player.append(node('strong', String(wins), 'player-score'));
-      }
-      players.append(player);
-    }
-    const foot = node('div', null, 'ticket-foot');
-    foot.append(node('span', `第 ${match.code} 場`), node('span', match.result ? resultText(match) : state(match), 'ticket-status'));
-    ticket.append(head, competition, players, foot);
-    if (match.result?.games.length) ticket.append(node('p', match.result.games.map(g => `${g.side_a}:${g.side_b}`).join(' · '), 'ticket-scoreline'));
-    if (match.status === 'in_progress') ticket.append(liveScorePanel(match));
-    if (match.started_at) ticket.append(node('p', `實際開賽 ${time(match.started_at, false)}`, 'ticket-scoreline'));
-    if (personalChanges.has(match.id)) appendPersonalChange(ticket, personalChanges.get(match.id));
-    grid.append(ticket);
-  }
-  if (ordered.length > limit) {
-    const more = node('button', `載入更多比賽 · 已顯示 ${Math.min(limit, ordered.length)} / ${ordered.length}`, 'load-matches');
-    more.type = 'button';
-    more.addEventListener('click', () => { limit += 40; render(); });
-    root.append(more);
+  const root=node('section',null,'schedule-board');
+  const courtOrder=new Map(data.courts.map(court=>court.id).sort((a,b)=>label('courts',a).localeCompare(label('courts',b),undefined,{numeric:true})).map((id,index)=>[id,index]));
+  let previousDay=null;
+  for(const row of compactScheduleRows(matches,courtOrder,data.timezone)){
+    if(row.date!==previousDay){root.append(navigationTarget(node('h2',row.date,'schedule-day-heading'),`day-${row.date}`,'賽程日期',row.date));previousDay=row.date;}
+    const slot=node('section',null,'time-slot compact-time-row'),rail=node('div',null,'slot-clock');
+    rail.setAttribute('aria-label',row.hours.length?row.hours.join('、'):'同一時段');
+    for(const hour of row.hours)rail.append(node('span',hour));
+    const grid=node('div',null,'ticket-grid');row.matches.forEach(match=>grid.append(scheduleTicket(match)));slot.append(rail,grid);root.append(slot);
   }
   return root;
 }
@@ -359,39 +314,8 @@ async function refreshSyncStatus(connectionStatus) {
 }
 
 
-// Reuse the same native selects in the mobile sheet and desktop filter row.
-const mobileLayout = matchMedia('(max-width:640px)');
-const filterDialog = $('filter-dialog');
-function arrangeMobileControls() {
-  if (!mobileLayout.matches && filterDialog.open) filterDialog.close();
-  $(mobileLayout.matches && page==='schedule' ? 'mobile-filter-fields' : 'filter-home').append($('filter-fields'));
-
-}
-function syncMobileControls() {
-  const count = ['division', 'date'].filter(id => $(id).value).length;
-  $('mobile-filter-label').textContent = count ? `篩選賽程 · ${count}` : '篩選賽程';
-  $('mobile-filters').classList.toggle('has-filters', count > 0);
-  $('apply-mobile-filters').textContent = `查看 ${visible().length} 場比賽`;
-}
-arrangeMobileControls();
-mobileLayout.addEventListener('change', arrangeMobileControls);
-$('mobile-filters').addEventListener('click', () => filterDialog.showModal());
-$('close-filters').addEventListener('click', () => filterDialog.close());
-$('apply-mobile-filters').addEventListener('click', () => {
-  filterDialog.close();
-  $('schedule-heading').scrollIntoView({block:'start', behavior:'instant'});
-});
-$('clear-mobile-filters').addEventListener('click', resetFilters);
-filterDialog.addEventListener('click', event => {
-  if (event.target !== filterDialog) return;
-  const rect = filterDialog.getBoundingClientRect();
-  if (event.clientY < rect.top || event.clientY > rect.bottom || event.clientX < rect.left || event.clientX > rect.right) filterDialog.close();
-});
-filterDialog.addEventListener('close', () => {
-  if (mobileLayout.matches) $('mobile-filters').focus({preventScroll:true});
-});
 $('search').addEventListener('keydown', event => {
-  if (event.key !== 'Enter' || event.isComposing || !mobileLayout.matches) return;
+  if (event.key !== 'Enter' || event.isComposing || !matchMedia('(max-width:640px)').matches) return;
   event.preventDefault();
   $('search').blur();
   if (selectedPlayer) focusPersonalSummary();
@@ -399,95 +323,23 @@ $('search').addEventListener('keydown', event => {
 });
 
 
-function renderLiveNow() {
-  if (!data) return;
-  $('live-now-updated').textContent = `資料更新 ${fullTimestamp(data.updated_at)}`;
-  const cards = data.courts.flatMap(court => {
-    const {current} = courtMatches(data.matches, court.id);
-    if (!current.length) return [];
-    const card = node('article', null, 'live-now-card is-playing');
-    const head = node('div', null, 'live-now-card-heading');
-    head.append(node('h3', court.name), node('span', '比賽中', 'live-now-state'));
-    card.append(head);
-    if (current.length > 1) card.append(node('p', '此場地有多場標記進行中，請向賽務確認。', 'notice'));
-    for (const match of current) {
-      card.append(node('p', `第 ${match.code} 場 · ${label('divisions', match.division_id)}`, 'live-now-division'), liveScorePanel(match));
-    }
-    return [card];
-  });
-  $('live-now-courts').replaceChildren(...(cards.length ? cards : [node('p', '目前沒有進行中的比賽。', 'live-now-idle')]));
-}
-
-let liveScoreRecords = [], liveScoreOffline = false, liveScoreFetching = false;
-function liveScorePanel(match) {
-  const panel = node('section', null, 'live-score');
-  panel.dataset.liveScoreMatch = match.id;
-  panel.setAttribute('aria-label', `第 ${match.code} 場即時比分`);
-  return panel;
-}
-function paintLiveScores() {
-  if (!data) return;
-  const matches = new Map(data.matches.map(match => [match.id, match]));
-  for (const panel of document.querySelectorAll('[data-live-score-match]')) {
-    const match = matches.get(panel.dataset.liveScoreMatch);
-    if (!match) continue;
-    const record = visibleLiveScore(match, liveScoreRecords);
-    const signature = JSON.stringify([match.started_at,record?.version??null,liveScoreOffline]);
-    if (panel.dataset.scoreSignature === signature) continue;
-    panel.dataset.scoreSignature = signature;
-    if (!record) { panel.replaceChildren(node('p',`${match.side_a.name} 對 ${match.side_b.name}`,'live-score-waiting'),node('p', liveScoreOffline ? '比分連線中斷，正在重新連線。' : '正在取得現場比分…', 'live-score-note')); continue; }
-    const score = record.score, wins = {a:0,b:0};
-    for (const game of score.games) wins[game.side_a > game.side_b ? 'a':'b']++;
-    const current = score.winner ? score.games.at(-1) : score.current;
-    const heading = node('div',null,'live-score-heading');
-    heading.append(node('strong',score.winner ? '勝負待確認' : `第 ${score.games.length+1} 局`),node('span',`局數 ${wins.a}：${wins.b}`));
-    const players = node('div',null,'live-score-players');
-    for (const [side,name] of [['a',match.side_a.name],['b',match.side_b.name]]) {
-      const player = node('div',null,'live-score-player');
-      player.append(node('span',name),node('strong',String(current[side==='a'?'side_a':'side_b'])));
-      players.append(player);
-    }
-    const games = node('p',score.games.map((game,i)=>`第 ${i+1} 局 ${game.side_a}：${game.side_b}`).join(' · '),'live-score-games');
-    const note = node('p',liveScoreOffline ? '連線中斷・顯示最後收到的比分' : `比分更新 ${new Date(record.updated_at).toLocaleTimeString("zh-TW",{timeZone:"Asia/Taipei",hour12:false})} · 約 2 秒自動更新`,'live-score-note');
-    panel.replaceChildren(heading,players,...(score.games.length?[games]:[]),note);
-  }
-}
-async function refreshLiveScores() {
-  if (liveScoreFetching || document.hidden) return;
-  liveScoreFetching = true;
-  try {
-    const response = await fetch('/public/live-scores.json',{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(4000)});
-    if (!response.ok) throw new Error('Live scores unavailable');
-    const next = await response.json();
-    if (typeof next.schedule_version !== 'string' || !/^[a-f0-9]{64}$/.test(next.schedule_version) || !Array.isArray(next.matches) || next.matches.length>1000 || next.matches.some(record=>!validLiveScore(record))) throw new Error('Invalid live scores');
-    liveScoreRecords = next.matches;
-    if (data && reader && next.schedule_version !== data.version) void reader.refresh();
-    liveScoreOffline = false;
-  } catch { liveScoreOffline = true; }
-  finally { liveScoreFetching = false; paintLiveScores(); }
-}
-setInterval(()=>void refreshLiveScores(),2000);
-window.addEventListener('online',()=>void refreshLiveScores());
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)void refreshLiveScores();});
-
-let appliedPage=null;
 function applyPageUi() {
-  const info=pageInfo[page],live=page==='live',schedule=page==='schedule';
+  const info=pageInfo[page],schedule=page==='schedule',browse=schedule||page==='results';
   document.body.dataset.page=page;
   $('hero-title').textContent=info.title;
+  $('schedule-heading').textContent=page==='results'?'完賽成績':page==='bracket'?'各組賽程':'預定時間';
   $('page-description').textContent=info.description;
   document.title=(data?.name??'壁球賽事')+' · '+info.title;
-  document.querySelector('.live-now').hidden=!live;
-  document.querySelector('.query-toolbar').hidden=!schedule;
-  document.querySelector('.browse-controls').hidden=live;
-  document.querySelector('.reader-layout').hidden=live;
+  document.querySelector('.query-toolbar').hidden=!browse;
+  document.querySelector('.browse-controls').hidden=false;
+  document.querySelector('.reader-layout').hidden=false;
   if(!schedule) $('personal-summary').hidden=true;
-  document.querySelector('.skip-link').href=live?'#live-now-courts':schedule?'#search':'#division';
+  document.querySelector('.skip-link').href=browse?'#search':'#division';
   for(const link of document.querySelectorAll('[data-page-link]')) {
     const target=link.dataset.pageLink;
     if(target===page)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
     link.href=pageHref(target,$('division').value?'?division='+encodeURIComponent($('division').value):'');
   }
-  if(appliedPage!==page){appliedPage=page;arrangeMobileControls();}
+  $('filter-home').hidden=page!=='bracket';
 }
 applyPageUi();

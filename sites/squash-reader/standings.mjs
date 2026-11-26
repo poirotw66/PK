@@ -60,20 +60,28 @@ function calculateGroup(group, matches, rules) {
   const ordered = [], ties = [];
   for (const points of [...new Set(rows.map(row => row.points))].sort((a,b) => b-a)) {
     const tied = rows.filter(row => row.points === points);
-    if (tied.length === 2) {
-      const winner = headToHead.get(tied.map(row => row.entry_id).sort().join(':'));
-      const difference = row => row.games_for - row.games_against;
-      if (winner) tied.sort((a,b) => Number(b.entry_id === winner) - Number(a.entry_id === winner));
-      else {
-        tied.sort((a,b) => difference(b)-difference(a) || pointDifference.get(b.entry_id)-pointDifference.get(a.entry_id));
-        if (difference(tied[0]) === difference(tied[1]) && pointDifference.get(tied[0].entry_id) === pointDifference.get(tied[1].entry_id)) ties.push(tied.map(row => row.entry_id));
-      }
-    } else if (tied.length > 2) ties.push(tied.map(row => row.entry_id));
-    const shared = ties.some(tie => tie.includes(tied[0].entry_id)), firstRank = ordered.length + 1;
-    tied.forEach((row,index) => { row.rank = firstRank + (shared ? 0 : index); });
+    if(tied.length>1){const ranking=tiedSubgroupOrder(tied.map(row=>row.entry_id),groupMatches,rules);tied.sort((a,b)=>ranking.ordered.indexOf(a.entry_id)-ranking.ordered.indexOf(b.entry_id));ties.push(...ranking.ties);}
+    const firstRank = ordered.length + 1;
+    tied.forEach((row,index) => {
+      const shared = ties.find(tie => tie.includes(row.entry_id));
+      row.rank = firstRank + (shared ? tied.findIndex(candidate => shared.includes(candidate.entry_id)) : index);
+    });
     ordered.push(...tied);
   }
   const status = needsReview || !incomplete && ties.length ? 'manual_review' : incomplete ? 'provisional' : 'final';
   const notice = automaticNotice + (needsReview ? '部分場次或規則需賽務確認，以下為目前統計。' : incomplete ? '目前為暫列排名，後續賽果會自動更新。' : ties.length ? '全組完賽，同分選手並列，最終順序需賽務裁定。' : '全組完賽，排名已完成計算；晉級名單由賽務確認。');
   return {...group, status, notice, confirmed_matches:confirmed, total_matches:groupMatches.filter(match => !['excluded','cancelled'].includes(match.status)).length, tie_groups:ties, rows:ordered};
+}
+
+export function tiedSubgroupOrder(ids, records, rules={}) {
+  const members=new Set(ids),totals=new Map(ids.map(id=>[id,[0,0,0,0]]));
+  for(const match of records){const a=match.side_a.entry_id,b=match.side_b.entry_id;if(!members.has(a)||!members.has(b)||!match.result)continue;for(const game of match.result.games){const x=game.side_a,y=game.side_b,aa=totals.get(a),bb=totals.get(b);aa[2]+=x;aa[3]+=y;bb[2]+=y;bb[3]+=x;if(maximum(x,y)==Math.max(rules.points_to_win_game??11,Math.min(x,y)+(rules.win_by_points??2))){aa[0]+=Number(x>y);aa[1]+=Number(y>x);bb[0]+=Number(y>x);bb[1]+=Number(x>y);}}}
+  function maximum(a,b){return Math.max(a,b);}
+  const ratio=(n,d)=>d?[n,d]:n?[1,0]:null;
+  const compare=(a,b)=>!a||!b?0:a[1]===0?(b[1]===0?0:1):b[1]===0?-1:Math.sign(a[0]*b[1]-b[0]*a[1]);
+  const keys=new Map(ids.map(id=>{const t=totals.get(id);return[id,[ratio(t[0],t[1]),ratio(t[2],t[3])]];}));
+  if(ids.some(id=>!keys.get(id)[0]))return{ordered:[...ids],ties:[[...ids]]};
+  const cmp=(a,b)=>compare(keys.get(a)[0],keys.get(b)[0])||compare(keys.get(a)[1],keys.get(b)[1]);
+  const ordered=[...ids].sort((a,b)=>-cmp(a,b)),groups=[];for(const id of ordered){const last=groups.at(-1);if(last&&!cmp(last[0],id))last.push(id);else groups.push([id]);}
+  return{ordered,ties:groups.filter(group=>group.length>1)};
 }

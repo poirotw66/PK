@@ -137,18 +137,17 @@ def validate_formats(snapshot: Snapshot) -> list[Issue]:
                     )
                 )
             if "encouragement_enabled" in plan:
-                from .encouragement import ELIGIBLE_DIVISIONS
+                from .encouragement import division_eligible
 
                 encouragement = plan["encouragement_enabled"]
                 if type(encouragement) is not bool or (
                     encouragement
                     and (
                         template != "single_elimination"
-                        or division.name not in ELIGIBLE_DIVISIONS
-                        or division.category != "school"
+                        or not division_eligible(snapshot, division)
                     )
                 ):
-                    errors.append("Encouragement requires an explicit junior-high knockout format.")
+                    errors.append("Encouragement requires an eligible direct knockout format.")
             placement = plan.get("placement_matches", [])
             if not isinstance(placement, list):
                 errors.append(

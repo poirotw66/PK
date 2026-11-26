@@ -6,8 +6,9 @@ export function passwordMode() { return env.ADMIN_AUTH_MODE === "password"; }
 export function temporaryConfiguration() {
     const encoded = env.TEMP_ADMIN_PASSWORD_HASH ?? "";
     const parts = /^pbkdf2_sha256\$100000\$([a-f0-9]{32})\$([a-f0-9]{64})$/.exec(encoded);
-    const expires = Date.parse(env.TEMP_ADMIN_EXPIRES_AT ?? "");
-    if (!passwordMode() || !parts || !Number.isFinite(expires) || Date.now() >= expires) return null;
+    const expiry = env.TEMP_ADMIN_EXPIRES_AT?.trim();
+    const expires = expiry ? Date.parse(expiry) : Infinity;
+    if (!passwordMode() || !parts || Number.isNaN(expires) || Date.now() >= expires) return null;
     return { salt: parts[1], hash: parts[2], expires, owner: "temporary-password:" + parts[2] };
 }
 
@@ -27,7 +28,7 @@ export async function temporaryIdentity() {
     if (!session || session.owner !== config.owner || now - session.created >= 28800000 || now - session.touched >= 1800000)
         return null;
     await env.DB.prepare("UPDATE sessions SET touched=? WHERE id=?").bind(now, id).run();
-    return { userId: config.owner, displayName: "臨時賽務人員", email: "臨時密碼登入", fullName: null };
+    return { userId: config.owner, displayName: "賽務管理員", email: "密碼登入", fullName: null };
 }
 
 export async function verifyTemporaryPassword(password: string) {
